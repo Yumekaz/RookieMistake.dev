@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Severity badge colors */
+.severity-error {
+  @apply bg-red-500/20 text-red-400 border-red-500/30;
+}
+
+.severity-warning {
+  @apply bg-amber-500/20 text-amber-400 border-amber-500/30;
+}
+
+.severity-info {
+  @apply bg-blue-500/20 text-blue-400 border-blue-500/30;
+}
+
+/* Score badge */
+.score-badge {
+  @apply inline-flex items-center justify-center rounded-full font-bold;
+}
+
+.score-high {
+  @apply bg-green-500/20 text-green-400;
+}
+
+.score-medium {
+  @apply bg-amber-500/20 text-amber-400;
+}
+
+.score-low {
+  @apply bg-red-500/20 text-red-400;
+}
