@@ -9,8 +9,11 @@ import { analyzeCode, saveSnippet, type Language, type AnalyzeResponse } from '@
 const CodeEditor = dynamic(() => import('@/components/Editor'), {
   ssr: false,
   loading: () => (
-    <div className="h-full w-full bg-gray-900 rounded-lg flex items-center justify-center">
-      <div className="text-gray-400">Loading editor...</div>
+    <div className="h-full w-full bg-gh-bg-secondary rounded-xl flex items-center justify-center border border-gh-border">
+      <div className="flex items-center gap-3 text-gh-text-muted">
+        <div className="w-5 h-5 border-2 border-gh-border border-t-gh-accent rounded-full animate-spin" />
+        <span className="text-sm">Loading editor...</span>
+      </div>
     </div>
   ),
 });
@@ -69,6 +72,32 @@ def risky_operation():
         pass
 `,
 };
+
+// Icons
+const PlayIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const SaveIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 export default function HomePage() {
   const [code, setCode] = useState(DEFAULT_CODE.javascript);
@@ -132,64 +161,91 @@ export default function HomePage() {
   }, [code, language, results]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gh-bg">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass border-b border-gh-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">
-                🔍 RookieMistakes.dev
+              <h1 className="text-xl sm:text-2xl font-bold">
+                <span className="gradient-text">RookieMistakes.dev</span>
               </h1>
-              <p className="text-sm text-gray-400">
-                Detect common junior developer mistakes with AST analysis
+              <p className="text-xs sm:text-sm text-gh-text-muted mt-0.5">
+                AST-based code analysis for JavaScript, TypeScript & Python
               </p>
             </div>
+            
             <div className="flex items-center gap-3">
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value as Language)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="language-select"
               >
                 <option value="javascript">JavaScript</option>
                 <option value="typescript">TypeScript</option>
                 <option value="python">Python</option>
               </select>
+              
               <button
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium px-4 py-2 rounded-lg transition-colors"
+                className="btn-primary flex items-center gap-2"
               >
-                {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                {isAnalyzing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon />
+                    <span>Analyze</span>
+                  </>
+                )}
               </button>
+              
               <button
                 onClick={handleSave}
                 disabled={isSaving || !results}
-                className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-medium px-4 py-2 rounded-lg transition-colors"
+                className="btn-secondary flex items-center gap-2"
               >
-                {isSaving ? 'Saving...' : 'Save & Share'}
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gh-text-muted border-t-white rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <SaveIcon />
+                    <span>Share</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Error/Success Messages */}
+      {/* Notifications */}
       {(error || shareUrl) && (
-        <div className="max-w-7xl mx-auto px-4 py-2 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 w-full animate-fade-in">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2 rounded-lg text-sm">
-              {error}
+            <div className="flex items-center gap-3 bg-gh-error/10 border border-gh-error/30 text-gh-error px-4 py-3 rounded-lg">
+              <AlertIcon />
+              <span className="text-sm">{error}</span>
             </div>
           )}
           {shareUrl && (
-            <div className="bg-green-500/10 border border-green-500/30 text-green-400 px-4 py-2 rounded-lg text-sm flex items-center justify-between">
-              <span>Saved! Link copied to clipboard.</span>
+            <div className="flex items-center justify-between gap-4 bg-gh-success/10 border border-gh-success/30 text-gh-success px-4 py-3 rounded-lg">
+              <div className="flex items-center gap-3 min-w-0">
+                <CheckIcon />
+                <span className="text-sm">Link copied to clipboard!</span>
+              </div>
               <a
                 href={shareUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-green-300"
+                className="text-sm underline hover:text-white transition-colors truncate max-w-[200px] sm:max-w-md"
               >
                 {shareUrl}
               </a>
@@ -199,13 +255,16 @@ export default function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-4 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-180px)]">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-140px)] min-h-[500px]">
           {/* Editor Panel */}
           <div className="flex flex-col min-h-0">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Code Editor
-            </h2>
+            <div className="panel-header mb-3">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              <span>Code Editor</span>
+            </div>
             <div className="flex-1 min-h-0">
               <CodeEditor
                 code={code}
@@ -217,10 +276,13 @@ export default function HomePage() {
 
           {/* Results Panel */}
           <div className="flex flex-col min-h-0">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">
-              Analysis Results
-            </h2>
-            <div className="flex-1 min-h-0 bg-gray-900/50 border border-gray-700 rounded-lg overflow-hidden">
+            <div className="panel-header mb-3">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span>Analysis Results</span>
+            </div>
+            <div className="flex-1 min-h-0 card overflow-hidden">
               {results ? (
                 <ResultsPanel
                   mistakes={results.mistakes}
@@ -228,8 +290,18 @@ export default function HomePage() {
                   isLoading={isAnalyzing}
                 />
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-500">
-                  <p>Click &quot;Analyze&quot; to check your code for common mistakes</p>
+                <div className="h-full flex flex-col items-center justify-center text-center p-8 empty-state">
+                  <div className="empty-state-icon">
+                    <svg className="w-8 h-8 text-gh-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gh-text mb-1">
+                    Ready to analyze
+                  </h3>
+                  <p className="text-sm text-gh-text-muted max-w-xs">
+                    Paste your code and click <span className="text-gh-accent">Analyze</span> to detect common mistakes
+                  </p>
                 </div>
               )}
             </div>
@@ -238,8 +310,12 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 py-4 text-center text-sm text-gray-500">
-        <p>RookieMistakes.dev — Open-source AST-based code analysis.</p>
+      <footer className="border-t border-gh-border py-4 bg-gh-bg-secondary/50">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-xs text-gh-text-muted">
+            Open-source AST-based code analysis • Built for junior developers
+          </p>
+        </div>
       </footer>
     </div>
   );

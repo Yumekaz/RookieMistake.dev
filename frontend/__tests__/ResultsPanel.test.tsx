@@ -23,32 +23,34 @@ describe('ResultsPanel Component', () => {
   describe('Score Display', () => {
     it('displays perfect score correctly', () => {
       render(<ResultsPanel mistakes={[]} score={10} />);
-      expect(screen.getByText('10/10')).toBeInTheDocument();
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText('Excellent')).toBeInTheDocument();
     });
 
     it('displays zero score correctly', () => {
       const mistakes = Array(10).fill(null).map((_, i) => createMistake({ id: i }));
       render(<ResultsPanel mistakes={mistakes} score={0} />);
-      expect(screen.getByText('0/10')).toBeInTheDocument();
+      expect(screen.getByText('0')).toBeInTheDocument();
+      expect(screen.getByText('Needs Work')).toBeInTheDocument();
     });
 
     it('applies correct CSS class for high score (8-10)', () => {
       render(<ResultsPanel mistakes={[]} score={9} />);
-      const scoreElement = screen.getByText('9/10');
+      const scoreElement = screen.getByText('9');
       expect(scoreElement.className).toMatch(/score-high|green|success/i);
     });
 
     it('applies correct CSS class for medium score (5-7)', () => {
       const mistakes = Array(4).fill(null).map((_, i) => createMistake({ id: i }));
       render(<ResultsPanel mistakes={mistakes} score={6} />);
-      const scoreElement = screen.getByText('6/10');
-      expect(scoreElement.className).toMatch(/score-medium|yellow|warning/i);
+      const scoreElement = screen.getByText('6');
+      expect(scoreElement.className).toMatch(/score-medium|amber|orange|warning/i);
     });
 
     it('applies correct CSS class for low score (0-4)', () => {
       const mistakes = Array(8).fill(null).map((_, i) => createMistake({ id: i }));
       render(<ResultsPanel mistakes={mistakes} score={2} />);
-      const scoreElement = screen.getByText('2/10');
+      const scoreElement = screen.getByText('2');
       expect(scoreElement.className).toMatch(/score-low|red|error|danger/i);
     });
   });
@@ -156,9 +158,9 @@ describe('ResultsPanel Component', () => {
       const warningBadge = screen.getByText(/WARNING/i);
       const infoBadge = screen.getByText(/INFO/i);
 
-      expect(errorBadge.className).toMatch(/error|red|danger/i);
-      expect(warningBadge.className).toMatch(/warning|yellow|orange/i);
-      expect(infoBadge.className).toMatch(/info|blue|gray/i);
+      expect(errorBadge.className).toMatch(/error|red|danger|gh-error/i);
+      expect(warningBadge.className).toMatch(/warning|yellow|orange|amber|gh-warning/i);
+      expect(infoBadge.className).toMatch(/info|blue|accent|gh-accent/i);
     });
   });
 
@@ -186,7 +188,7 @@ describe('ResultsPanel Component', () => {
     it('has accessible score display', () => {
       render(<ResultsPanel mistakes={[]} score={10} />);
       // Score should be visible to screen readers
-      expect(screen.getByText('10/10')).toBeVisible();
+      expect(screen.getByText('10')).toBeVisible();
     });
 
     it('mistake cards are keyboard accessible', () => {
