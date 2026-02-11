@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../lib/logger';
+import { recordRequestMetric, recordErrorMetric } from '../lib/metrics';
 import config from '../config';
 
 // Custom error class with status code
@@ -94,6 +95,14 @@ export function errorHandler(
   // Determine status code
   const statusCode = err instanceof ApiError ? err.statusCode : 500;
 
+  // Record metrics
+  const duration = Date.now() - (req.startTime || Date.now());
+  recordRequestMetric(statusCode, duration, req.path);
+  
+  if (statusCode >= 400) {
+    recordErrorMetric(statusCode >= 500 ? 'server_error' : 'client_error', req.path);
+  }
+
   // Log the error
   const logData = {
     requestId,
@@ -147,12 +156,27 @@ export function asyncHandler(
   };
 }
 
+// Extend Express Request type to include startTime
+declare global {
+  namespace Express {
+    interface Request {
+      startTime?: number;
+    }
+  }
+}
+
 // Request timing middleware
 export function requestTimer(req: Request, res: Response, next: NextFunction): void {
-  const start = Date.now();
+  req.startTime = Date.now();
 
   res.on('finish', () => {
-    const duration = Date.now() - start;
+    const duration = Date.now() - req.startTime!;
+    
+    // Record metrics for successful requests (errors are recorded in errorHandler)
+    if (res.statusCode < 400) {
+      recordRequestMetric(res.statusCode, duration, req.path);
+    }
+    
     logger.info('Request completed', {
       method: req.method,
       path: req.path,

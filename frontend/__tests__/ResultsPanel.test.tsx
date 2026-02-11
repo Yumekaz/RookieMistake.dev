@@ -89,6 +89,7 @@ describe('ResultsPanel Component', () => {
         message: "Use '===' instead of '=='",
         explanation: 'Type coercion can cause bugs',
         fix: 'Replace == with ===',
+        codeExample: '// Use === instead of ==',
       });
 
       render(<ResultsPanel mistakes={[mistake]} score={9} />);
@@ -98,7 +99,7 @@ describe('ResultsPanel Component', () => {
       expect(screen.getByText(/Col(umn)? 10/i)).toBeInTheDocument();
       expect(screen.getByText('double_equals')).toBeInTheDocument();
       expect(screen.getByText(/Type coercion can cause bugs/)).toBeInTheDocument();
-      expect(screen.getByText(/Replace == with ===/)).toBeInTheDocument();
+      expect(screen.getByText(/Code Example/i)).toBeInTheDocument();
     });
 
     it('renders multiple mistakes', () => {

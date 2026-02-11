@@ -4,6 +4,7 @@ import { getDetectorsForLanguage } from '../detectors';
 import { generateExplanation } from '../explainers';
 import { AnalyzeRequest, AnalyzeResponse, Mistake, Language } from '../types';
 import { logger, logAnalysis, logError } from '../lib/logger';
+import { recordAnalysisMetric } from '../lib/metrics';
 
 const router = Router();
 
@@ -85,7 +86,7 @@ router.post('/', (req: Request, res: Response) => {
 
         for (const result of detectorResults) {
           // Generate explanation from template
-          const { explanation, fix } = generateExplanation(result.name, {
+          const { explanation, fix, codeExample } = generateExplanation(result.name, {
             ...result.ast_facts,
             language,
             certainty: result.certainty,
@@ -104,6 +105,7 @@ router.post('/', (req: Request, res: Response) => {
             ast_facts: result.ast_facts,
             explanation,
             fix,
+            codeExample,
           });
         }
       } catch (detectorError) {
@@ -127,7 +129,9 @@ router.post('/', (req: Request, res: Response) => {
     };
 
     // Log analysis completion
-    logAnalysis(language, code.length, allMistakes.length, Date.now() - startTime);
+    const duration = Date.now() - startTime;
+    logAnalysis(language, code.length, allMistakes.length, duration);
+    recordAnalysisMetric(language, allMistakes.length, duration);
 
     return res.json(response);
   } catch (error) {

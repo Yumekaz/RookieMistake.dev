@@ -19,6 +19,7 @@ export interface Mistake {
   ast_facts: Record<string, unknown>;
   explanation: string;
   fix: string;
+  codeExample?: string;
 }
 
 export interface AnalyzeResponse {

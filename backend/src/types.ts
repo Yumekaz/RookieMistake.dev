@@ -29,6 +29,7 @@ export interface Mistake {
   ast_facts: AstFacts;
   explanation: string;
   fix: string;
+  codeExample?: string;
 }
 
 // Response from /api/analyze

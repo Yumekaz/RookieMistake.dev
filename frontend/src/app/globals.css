@@ -116,18 +116,27 @@ body {
   @apply bg-gradient-to-br from-red-500/20 to-rose-600/20 text-red-400 border border-red-500/30;
 }
 
-/* Button styles */
+/* Button styles with micro-interactions */
 .btn-primary {
   @apply relative overflow-hidden bg-gradient-to-r from-blue-600 to-blue-500 text-white font-medium px-5 py-2.5 rounded-lg transition-all duration-200;
 }
 
+.btn-primary::before {
+  content: '';
+  @apply absolute inset-0 bg-white/20 translate-y-full transition-transform duration-300;
+}
+
 .btn-primary:hover {
   @apply from-blue-500 to-blue-400 shadow-lg shadow-blue-500/25;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.btn-primary:hover::before {
+  @apply translate-y-0;
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-primary:disabled {
@@ -135,13 +144,26 @@ body {
   transform: none;
 }
 
+.btn-primary:disabled::before {
+  @apply hidden;
+}
+
 .btn-secondary {
-  @apply relative bg-[#21262d] text-white font-medium px-5 py-2.5 rounded-lg border border-[#30363d] transition-all duration-200;
+  @apply relative bg-[#21262d] text-white font-medium px-5 py-2.5 rounded-lg border border-[#30363d] transition-all duration-200 overflow-hidden;
+}
+
+.btn-secondary::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full transition-transform duration-500;
 }
 
 .btn-secondary:hover {
   @apply bg-[#30363d] border-[#8b949e];
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+.btn-secondary:hover::before {
+  @apply translate-x-full;
 }
 
 .btn-secondary:disabled {
@@ -149,9 +171,9 @@ body {
   transform: none;
 }
 
-/* Card styles */
+/* Card styles with micro-interactions */
 .card {
-  @apply bg-[#161b22] border border-[#30363d] rounded-xl;
+  @apply bg-[#161b22] border border-[#30363d] rounded-xl transition-all duration-300;
 }
 
 .card-hover {
@@ -160,7 +182,8 @@ body {
 
 .card-hover:hover {
   @apply border-[#8b949e];
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
 }
 
 /* Panel header */
@@ -175,6 +198,43 @@ body {
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 1rem;
+}
+
+.language-select:hover {
+  @apply bg-[#30363d] border-[#8b949e];
+}
+
+/* Custom dropdown styling */
+select.language-select option {
+  @apply bg-[#161b22] text-white py-2 px-3;
+  font-size: 14px;
+}
+
+/* For webkit browsers - style the dropdown */
+select.language-select:focus {
+  @apply ring-2 ring-blue-500/50 border-blue-500;
+}
+
+/* Style the dropdown list (works in some browsers) */
+select.language-select optgroup,
+select.language-select option {
+  background-color: #161b22;
+  color: #e6edf3;
+  padding: 8px 12px;
+}
+
+select.language-select option:hover,
+select.language-select option:focus,
+select.language-select option:active,
+select.language-select option:checked {
+  background-color: #2f81f7 !important;
+  color: white;
+}
+
+/* Firefox specific */
+select.language-select:-moz-focusring {
+  color: transparent;
+  text-shadow: 0 0 0 #fff;
 }
 
 /* Animation for loading */
@@ -197,5 +257,98 @@ body {
 }
 
 .empty-state-icon {
-  @apply w-16 h-16 rounded-full bg-[#21262d] flex items-center justify-center mb-4;
+  @apply w-16 h-16 rounded-full bg-[#21262d] flex items-center justify-center mb-4 transition-all duration-500;
+}
+
+.empty-state:hover .empty-state-icon {
+  @apply bg-[#30363d];
+  transform: scale(1.05);
+}
+
+/* Stagger animation for mistake cards */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease-out forwards;
+}
+
+/* Ripple effect for buttons */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+/* Focus visible styles for accessibility */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  @apply outline-none ring-2 ring-blue-500/50 ring-offset-2 ring-offset-[#0d1117];
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .card {
+    @apply rounded-lg;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    @apply px-4 py-2 text-sm;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) {
+  .card-hover:hover {
+    transform: none;
+  }
+  
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Custom selection color */
+::selection {
+  @apply bg-blue-500/30 text-white;
+}
+
+/* Smooth focus transitions */
+input,
+button,
+select,
+textarea {
+  @apply transition-colors duration-200;
 }

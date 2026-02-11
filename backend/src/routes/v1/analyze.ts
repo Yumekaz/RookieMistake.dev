@@ -7,6 +7,7 @@ import { validateAnalyzeRequest, AnalyzeRequest } from '../../middleware/validat
 import { asyncHandler, BadRequestError } from '../../middleware/errorHandler';
 import { analyzeLimiter } from '../../middleware/rateLimit';
 import { logger, logAnalysis } from '../../lib/logger';
+import { recordAnalysisMetric } from '../../lib/metrics';
 
 const router = Router();
 
@@ -53,7 +54,7 @@ router.post(
 
         for (const result of detectorResults) {
           // Generate explanation from template
-          const { explanation, fix } = generateExplanation(result.name, {
+          const { explanation, fix, codeExample } = generateExplanation(result.name, {
             ...result.ast_facts,
             language,
             certainty: result.certainty,
@@ -72,6 +73,7 @@ router.post(
             ast_facts: result.ast_facts,
             explanation,
             fix,
+            codeExample,
           });
         }
       } catch (detectorError) {
@@ -91,6 +93,7 @@ router.post(
 
     const duration = Date.now() - startTime;
     logAnalysis(language, code.length, allMistakes.length, duration);
+    recordAnalysisMetric(language as string, allMistakes.length, duration);
 
     return res.json({
       mistakes: allMistakes,

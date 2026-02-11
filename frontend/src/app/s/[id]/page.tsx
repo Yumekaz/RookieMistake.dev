@@ -165,18 +165,18 @@ export default function SnippetPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-140px)] min-h-[500px]">
           {/* Editor Panel */}
-          <div className="flex flex-col min-h-0">
-            <div className="panel-header mb-3">
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="panel-header mb-3 shrink-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
               <span>Code</span>
               <span className="text-gh-text-muted font-normal normal-case">(Read Only)</span>
             </div>
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 overflow-hidden">
               <CodeEditor
                 code={snippet.code}
                 language={snippet.language}
@@ -187,14 +187,14 @@ export default function SnippetPage() {
           </div>
 
           {/* Results Panel */}
-          <div className="flex flex-col min-h-0">
-            <div className="panel-header mb-3">
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="panel-header mb-3 shrink-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
               <span>Analysis Results</span>
             </div>
-            <div className="flex-1 min-h-0 card overflow-hidden">
+            <div className="flex-1 card overflow-hidden">
               <ResultsPanel
                 mistakes={snippet.results.mistakes}
                 score={snippet.results.score}

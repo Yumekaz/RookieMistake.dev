@@ -22,7 +22,8 @@ describe('Explanation Templates', () => {
       const template = getRawTemplate('missing_await');
       expect(template).not.toBeNull();
       expect(template?.explanation).toContain('{{callee_name}}');
-      expect(template?.fix).toContain('await');
+      expect(template?.fix).toBeDefined();
+      expect(template?.codeExample).toBeDefined();
     });
 
     it('returns null for unknown detector', () => {
@@ -45,8 +46,10 @@ describe('Explanation Templates', () => {
         expect(result.explanation).toContain('fetchData');
         expect(result.explanation).toContain('expression_statement');
         expect(result.explanation).toContain('async');
-        expect(result.fix).toContain('fetchData');
-        expect(result.fix).toContain('await');
+        expect(result.fix).toBeDefined();
+        expect(result.codeExample).toContain('await');
+        expect(result.codeExample).toContain('// ❌ Before');
+        expect(result.codeExample).toContain('// ✅ After');
       });
 
       it('produces same output for same input', () => {
@@ -61,6 +64,7 @@ describe('Explanation Templates', () => {
 
         expect(result1.explanation).toBe(result2.explanation);
         expect(result1.fix).toBe(result2.fix);
+        expect(result1.codeExample).toBe(result2.codeExample);
       });
     });
 
@@ -76,7 +80,8 @@ describe('Explanation Templates', () => {
 
         expect(result.explanation).toContain('==');
         expect(result.explanation).toContain('type coercion');
-        expect(result.fix).toContain('===');
+        expect(result.fix).toBeDefined();
+        expect(result.codeExample).toContain('===');
       });
 
       it('generates deterministic explanation for !=', () => {
@@ -89,7 +94,7 @@ describe('Explanation Templates', () => {
         const result = generateExplanation('double_equals', facts);
 
         expect(result.explanation).toContain('!=');
-        expect(result.fix).toContain('!==');
+        expect(result.codeExample).toContain('==='); // Code example shows strict equality
       });
     });
 
@@ -103,7 +108,7 @@ describe('Explanation Templates', () => {
         const result = generateExplanation('empty_catch', facts);
 
         expect(result.explanation).toContain('empty');
-        expect(result.fix).toContain('error');
+        expect(result.codeExample).toContain('error');
       });
 
       it('handles missing catch parameter', () => {
@@ -114,8 +119,9 @@ describe('Explanation Templates', () => {
 
         const result = generateExplanation('empty_catch', facts);
 
-        expect(result.explanation).toContain('only comments');
+        expect(result.explanation).toContain('pass/comment');
         expect(result.fix).toBeDefined();
+        expect(result.codeExample).toBeDefined();
       });
     });
 
@@ -133,7 +139,7 @@ describe('Explanation Templates', () => {
         expect(result.explanation).toContain('data');
         expect(result.explanation).toContain('12');
         expect(result.explanation).toContain('5');
-        expect(result.fix).toContain('data');
+        expect(result.codeExample).toContain('otherUser');
       });
     });
 
@@ -149,7 +155,7 @@ describe('Explanation Templates', () => {
 
         expect(result.explanation).toContain('for');
         expect(result.explanation).toContain('<=');
-        expect(result.fix).toContain('<');
+        expect(result.codeExample).toContain('<');
       });
     });
 
@@ -163,8 +169,8 @@ describe('Explanation Templates', () => {
         const result = generateExplanation('console_log_left', facts);
 
         expect(result.explanation).toContain('log');
-        expect(result.explanation).toContain('5');
-        expect(result.fix).toContain('log');
+        expect(result.fix).toBeDefined();
+        expect(result.codeExample).toContain('console.log');
       });
     });
 

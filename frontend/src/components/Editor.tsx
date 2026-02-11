@@ -1,6 +1,7 @@
 'use client';
 
-import Editor from '@monaco-editor/react';
+import { useRef, useEffect } from 'react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import type { Language } from '@/lib/api';
 
 interface CodeEditorProps {
@@ -28,10 +29,30 @@ export default function CodeEditor({
   onChange,
   readOnly = false,
 }: CodeEditorProps) {
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+
+  const handleEditorDidMount: OnMount = (editor) => {
+    editorRef.current = editor;
+    
+    // Ensure editor is properly focused and layout is calculated
+    setTimeout(() => {
+      editor.layout();
+    }, 100);
+  };
+
+  // Re-layout when language changes
+  useEffect(() => {
+    if (editorRef.current) {
+      setTimeout(() => {
+        editorRef.current?.layout();
+      }, 100);
+    }
+  }, [language]);
+
   return (
     <div className="h-full w-full flex flex-col card overflow-hidden">
       {/* Editor Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gh-bg-secondary border-b border-gh-border">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gh-bg-secondary border-b border-gh-border shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
@@ -51,13 +72,14 @@ export default function CodeEditor({
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 relative min-h-0">
         <Editor
           height="100%"
           language={languageMap[language]}
           value={code}
           onChange={(value) => onChange(value || '')}
           theme="vs-dark"
+          onMount={handleEditorDidMount}
           options={{
             minimap: { enabled: false },
             fontSize: 14,
@@ -86,6 +108,11 @@ export default function CodeEditor({
               verticalScrollbarSize: 8,
               horizontalScrollbarSize: 8,
             },
+            // Ensure editor captures keyboard events
+            fixedOverflowWidgets: true,
+            // Disable some features that might interfere
+            overviewRulerLanes: 0,
+            overviewRulerBorder: false,
           }}
         />
       </div>
