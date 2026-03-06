@@ -849,3 +849,16 @@
 {"codeLength":1,"duration":"1ms","language":"javascript","level":"info","message":"Code analysis completed","mistakeCount":0,"service":"rookie-mistakes-api","timestamp":"2026-02-11T07:39:59.643Z"}
 {"duration":"3ms","level":"info","message":"Request completed","method":"POST","path":"/","service":"rookie-mistakes-api","statusCode":200,"timestamp":"2026-02-11T07:39:59.644Z"}
 {"level":"info","message":"Received SIGINT, shutting down gracefully...","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:03.663Z"}
+{"level":"info","message":"Initializing application...","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.369Z"}
+{"level":"info","message":"Application initialized successfully","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.472Z"}
+{"level":"info","message":"🚀 RookieMistakes API running on http://localhost:3001","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.478Z"}
+{"level":"info","message":"   Environment: development","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.479Z"}
+{"level":"info","message":"   API Docs: http://localhost:3001/api/docs","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.480Z"}
+{"level":"info","message":"   Health: http://localhost:3001/api/health","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.481Z"}
+{"level":"info","message":"   Analyze: POST http://localhost:3001/api/v1/analyze","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.481Z"}
+{"level":"info","message":"   Save: POST http://localhost:3001/api/v1/save","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.482Z"}
+{"level":"info","message":"   Get: GET http://localhost:3001/api/v1/snippet/:id","service":"rookie-mistakes-api","timestamp":"2026-02-11T07:45:17.482Z"}
+{"codeLength":353,"duration":"40ms","language":"typescript","level":"info","message":"Code analysis completed","mistakeCount":5,"service":"rookie-mistakes-api","timestamp":"2026-02-11T07:46:01.032Z"}
+{"duration":"65ms","level":"info","message":"Request completed","method":"POST","path":"/","service":"rookie-mistakes-api","statusCode":200,"timestamp":"2026-02-11T07:46:01.037Z"}
+{"codeLength":264,"duration":"7ms","language":"python","level":"info","message":"Code analysis completed","mistakeCount":3,"service":"rookie-mistakes-api","timestamp":"2026-02-11T07:46:19.813Z"}
+{"duration":"10ms","level":"info","message":"Request completed","method":"POST","path":"/","service":"rookie-mistakes-api","statusCode":200,"timestamp":"2026-02-11T07:46:19.815Z"}
