@@ -31,22 +31,23 @@ export const logger = winston.createLogger({
   level: config.logging.level,
   defaultMeta: { service: 'rookie-mistakes-api' },
   transports: [
-    // Error logs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'error.log'),
-      level: 'error',
-      format: fileFormat,
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-
-    // Combined logs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'combined.log'),
-      format: fileFormat,
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
+    ...(config.nodeEnv === 'test'
+      ? []
+      : [
+          new winston.transports.File({
+            filename: path.join(logsDir, 'error.log'),
+            level: 'error',
+            format: fileFormat,
+            maxsize: 5242880, // 5MB
+            maxFiles: 5,
+          }),
+          new winston.transports.File({
+            filename: path.join(logsDir, 'combined.log'),
+            format: fileFormat,
+            maxsize: 5242880, // 5MB
+            maxFiles: 5,
+          }),
+        ]),
   ],
 });
 

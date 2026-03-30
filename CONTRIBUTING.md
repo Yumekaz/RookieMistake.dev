@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
+- [Community Guidelines](#community-guidelines)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [How to Contribute](#how-to-contribute)
@@ -13,9 +13,9 @@ Thank you for your interest in contributing! This document provides guidelines a
 - [Commit Messages](#commit-messages)
 - [Pull Request Process](#pull-request-process)
 
-## Code of Conduct
+## Community Guidelines
 
-This project adheres to a code of conduct. By participating, you are expected to uphold this code:
+Please keep contributions respectful, inclusive, and constructive. This repository does not currently ship a separate `CODE_OF_CONDUCT.md`, so the expectation is simply to be thoughtful and collaborative:
 
 - Be respectful and inclusive
 - Welcome newcomers
@@ -61,7 +61,8 @@ cd frontend
 npm test
 
 # All tests with coverage
-npm test -- --coverage
+cd backend && npm test -- --coverage
+cd frontend && npm run test:coverage
 ```
 
 ## How to Contribute
@@ -289,7 +290,6 @@ docs(readme): update installation instructions
 
 Contributors will be recognized in:
 - Release notes
-- CONTRIBUTORS.md file
 - Project documentation
 
 Thank you for contributing to RookieMistakes.dev! 🚀

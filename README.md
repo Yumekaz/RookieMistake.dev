@@ -108,11 +108,11 @@ npm run dev
 ### Run Tests
 
 ```bash
-# Backend tests (100 tests)
+# Backend tests (142 tests)
 cd backend
 npm test
 
-# Frontend tests (21 tests)
+# Frontend tests (47 tests)
 cd frontend
 npm test
 
@@ -120,6 +120,8 @@ npm test
 cd backend && npm run lint
 cd frontend && npm run lint
 ```
+
+In Docker Compose, the frontend proxy target is driven by `BACKEND_URL`. If the backend host or port changes, update that value and the matching rewrite together.
 
 ## API Reference
 
@@ -345,20 +347,18 @@ rookie-mistakes/
 │   ├── Dockerfile
 │   └── src/
 │       ├── index.ts               # Express app
-│       ├── types.ts               # TypeScript interfaces
+│       ├── config.ts              # Runtime config
 │       ├── parser.ts              # Tree-sitter setup
 │       ├── db.ts                  # SQLite wrapper
-│       ├── routes/
-│       │   ├── analyze.ts         # POST /api/analyze
-│       │   └── snippets.ts        # Save/get snippets
-│       ├── detectors/
-│       │   ├── index.ts           # Detector registry
-│       │   ├── missing-await.ts
-│       │   ├── double-equals.ts
-│       │   └── ... (8 more)
-│       └── explainers/
-│           ├── index.ts
-│           └── templates.ts       # Handlebars templates
+│       ├── lib/                   # Logging and metrics helpers
+│       ├── middleware/            # Validation, rate limiting, errors
+│       ├── routes/                # Legacy API routes
+│       ├── routes/v1/             # Preferred API routes
+│       ├── detectors/             # AST detectors
+│       ├── explainers/            # Template-based explanations
+│       └── swagger.ts             # OpenAPI spec
+├── backend/tests/                # Unit and e2e tests
+├── backend/fixtures/             # Sample inputs for detector tests
 ├── docker-compose.yml
 ├── README.md
 └── LICENSE

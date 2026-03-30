@@ -1,13 +1,6 @@
 import { Parser } from '../parser';
 import { Detector, DetectorResult, Language } from '../types';
-import {
-  findNodes,
-  getNodeText,
-  findAncestor,
-  getLineNumber,
-  getColumnNumber,
-  walkTree,
-} from '../parser';
+import { getNodeText } from '../parser';
 
 /**
  * variable_shadowing detector
@@ -22,12 +15,6 @@ import {
  * - Ignores common intentional patterns like loop variables (i, j, k)
  * - Ignores callback parameters that commonly shadow (e.g., 'err', 'error')
  */
-
-interface ScopeInfo {
-  node: Parser.SyntaxNode;
-  variables: Map<string, number>; // name -> line number
-  parent: ScopeInfo | null;
-}
 
 // Common variable names that are often intentionally shadowed
 const IGNORED_NAMES = new Set(['i', 'j', 'k', '_', 'err', 'error', 'e']);
@@ -67,90 +54,6 @@ function isScopeNode(node: Parser.SyntaxNode, language: Language): boolean {
   }
 
   return scopeTypes.includes(node.type);
-}
-
-// Build scope tree and collect declarations
-function buildScopeTree(
-  root: Parser.SyntaxNode,
-  code: string,
-  language: Language
-): ScopeInfo {
-  const rootScope: ScopeInfo = {
-    node: root,
-    variables: new Map(),
-    parent: null,
-  };
-
-  function processNode(node: Parser.SyntaxNode, currentScope: ScopeInfo): void {
-    // Check if this node creates a new scope
-    let scope = currentScope;
-    if (isScopeNode(node, language) && node !== root) {
-      scope = {
-        node,
-        variables: new Map(),
-        parent: currentScope,
-      };
-    }
-
-    // Record variable declarations
-    if (node.type === 'variable_declarator') {
-      const nameNode = node.childForFieldName('name');
-      if (nameNode && nameNode.type === 'identifier') {
-        const name = getNodeText(nameNode, code);
-        scope.variables.set(name, nameNode.startPosition.row + 1);
-      }
-    }
-
-    // Function parameters
-    if (node.type === 'formal_parameters' || node.type === 'parameters') {
-      for (const child of node.children) {
-        if (child.type === 'identifier') {
-          const name = getNodeText(child, code);
-          scope.variables.set(name, child.startPosition.row + 1);
-        } else if (
-          child.type === 'required_parameter' ||
-          child.type === 'optional_parameter'
-        ) {
-          const nameNode = child.childForFieldName('pattern') || child.children[0];
-          if (nameNode && nameNode.type === 'identifier') {
-            const name = getNodeText(nameNode, code);
-            scope.variables.set(name, nameNode.startPosition.row + 1);
-          }
-        }
-      }
-    }
-
-    // Python parameters
-    if (node.type === 'parameters') {
-      walkTree(node, (paramNode) => {
-        if (paramNode.type === 'identifier' && paramNode.parent?.type !== 'attribute') {
-          const name = getNodeText(paramNode, code);
-          scope.variables.set(name, paramNode.startPosition.row + 1);
-        }
-      });
-    }
-
-    // For loop variables
-    if (node.type === 'for_statement' || node.type === 'for_in_statement') {
-      const init = node.childForFieldName('initializer') || node.childForFieldName('left');
-      if (init) {
-        walkTree(init, (initNode) => {
-          if (initNode.type === 'identifier') {
-            const name = getNodeText(initNode, code);
-            scope.variables.set(name, initNode.startPosition.row + 1);
-          }
-        });
-      }
-    }
-
-    // Recurse into children
-    for (const child of node.children) {
-      processNode(child, scope);
-    }
-  }
-
-  processNode(root, rootScope);
-  return rootScope;
 }
 
 const variableShadowingDetector: Detector = {

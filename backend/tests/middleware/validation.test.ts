@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import {
   validate,
   validateAnalyzeRequest,
-  validateSaveRequest,
   validateSnippetParams,
   analyzeRequestSchema,
   saveRequestSchema,

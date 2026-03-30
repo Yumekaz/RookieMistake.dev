@@ -1,3 +1,5 @@
+import type { Parser } from './parser';
+
 // Supported languages for analysis
 export type Language = 'javascript' | 'typescript' | 'python';
 
@@ -69,7 +71,7 @@ export interface Snippet {
 export interface Detector {
   name: string;
   supportedLanguages: Language[];
-  detect(code: string, language: Language, tree: any): DetectorResult[];
+  detect(code: string, language: Language, tree: Parser.Tree): DetectorResult[];
 }
 
 // Raw result from a detector before explanation is added

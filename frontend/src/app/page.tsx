@@ -114,6 +114,10 @@ export default function HomePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<{
+    tone: 'success' | 'warning';
+    message: string;
+  } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLanguageChange = useCallback((newLanguage: Language) => {
@@ -122,6 +126,7 @@ export default function HomePage() {
     setResults(null);
     setError(null);
     setShareUrl(null);
+    setShareFeedback(null);
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -133,6 +138,7 @@ export default function HomePage() {
     setIsAnalyzing(true);
     setError(null);
     setShareUrl(null);
+    setShareFeedback(null);
 
     try {
       const response = await analyzeCode(code, language);
@@ -153,13 +159,24 @@ export default function HomePage() {
 
     setIsSaving(true);
     setError(null);
+    setShareFeedback(null);
 
     try {
       const { id } = await saveSnippet(code, language, results);
       const url = `${window.location.origin}/s/${id}`;
       setShareUrl(url);
-      
-      await navigator.clipboard.writeText(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareFeedback({
+          tone: 'success',
+          message: 'Link copied to clipboard!',
+        });
+      } catch {
+        setShareFeedback({
+          tone: 'warning',
+          message: 'Snippet saved, but clipboard copy failed. Use the share link below.',
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -320,7 +337,7 @@ export default function HomePage() {
       </header>
 
       {/* Notifications */}
-      {(error || shareUrl) && (
+      {(error || (shareUrl && shareFeedback)) && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 w-full animate-fade-in">
           {error && (
             <div className="flex items-center gap-3 bg-gh-error/10 border border-gh-error/30 text-gh-error px-4 py-3 rounded-lg">
@@ -328,11 +345,17 @@ export default function HomePage() {
               <span className="text-sm">{error}</span>
             </div>
           )}
-          {shareUrl && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gh-success/10 border border-gh-success/30 text-gh-success px-4 py-3 rounded-lg">
+          {shareUrl && shareFeedback && (
+            <div
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-lg border ${
+                shareFeedback.tone === 'success'
+                  ? 'bg-gh-success/10 border-gh-success/30 text-gh-success'
+                  : 'bg-gh-warning/10 border-gh-warning/30 text-gh-warning'
+              }`}
+            >
               <div className="flex items-center gap-3 min-w-0">
-                <CheckIcon />
-                <span className="text-sm">Link copied to clipboard!</span>
+                {shareFeedback.tone === 'success' ? <CheckIcon /> : <AlertIcon />}
+                <span className="text-sm">{shareFeedback.message}</span>
               </div>
               <a
                 href={shareUrl}

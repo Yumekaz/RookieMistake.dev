@@ -7,7 +7,6 @@ import {
   getEnclosingFunction,
   getLineNumber,
   getColumnNumber,
-  walkTree,
 } from '../parser';
 
 /**
@@ -80,7 +79,7 @@ const consoleLogLeftDetector: Detector = {
   name: 'console_log_left',
   supportedLanguages: ['javascript', 'typescript'],
 
-  detect(code: string, language: Language, tree: Parser.Tree): DetectorResult[] {
+  detect(code: string, _language: Language, tree: Parser.Tree): DetectorResult[] {
     const results: DetectorResult[] = [];
     const root = tree.rootNode;
 

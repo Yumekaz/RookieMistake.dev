@@ -28,9 +28,11 @@ console.log(value.toString());
       expect(results[0].ast_facts.assigned_null_like_before).toBe(true);
     });
 
-    it('detects access on parameter without null check', () => {
+    it('detects access after reassignment to null in the same scope', () => {
       const code = `
-function process(user) {
+function process() {
+  let user = getUser();
+  user = null;
   return user.name;
 }
 `;
@@ -57,6 +59,7 @@ console.log(data?.length);
     it('does not flag access after null check', () => {
       const code = `
 function process(user) {
+  user = null;
   if (user) {
     return user.name;
   }

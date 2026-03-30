@@ -3,7 +3,6 @@ import { Detector, DetectorResult, Language } from '../types';
 import {
   findNodes,
   getNodeText,
-  findAncestor,
   getLineNumber,
   getColumnNumber,
   walkTree,
@@ -15,22 +14,19 @@ import {
  * Detects potential access on null/undefined/None values.
  * 
  * Heuristics:
- * - Looks for member/attribute access on variables that are:
- *   1. Parameters (could be null/undefined)
- *   2. Assigned to null/undefined/None earlier in the same scope
+ * - Looks for member/attribute access on variables assigned to null/undefined/None
  * - Checks if there's a null guard (if statement, optional chaining, etc.)
  * 
  * False positive mitigation:
  * - Ignores access inside conditional blocks that check the variable
  * - Ignores optional chaining (?.)
- * - Only flags if there's clear evidence of nullable assignment
+ * - Only flags when there is clear evidence of nullable assignment
  */
 
 // Track variables assigned to null-like values
 function findNullAssignments(
   root: Parser.SyntaxNode,
-  code: string,
-  language: Language
+  code: string
 ): Map<string, number> {
   const nullAssignments = new Map<string, number>();
 
@@ -87,34 +83,6 @@ function findNullAssignments(
   });
 
   return nullAssignments;
-}
-
-// Get function/method parameters
-function getParameters(root: Parser.SyntaxNode, code: string): Set<string> {
-  const params = new Set<string>();
-
-  walkTree(root, (node) => {
-    if (
-      node.type === 'formal_parameters' ||
-      node.type === 'parameters'
-    ) {
-      for (const child of node.children) {
-        if (child.type === 'identifier') {
-          params.add(getNodeText(child, code));
-        } else if (
-          child.type === 'required_parameter' ||
-          child.type === 'optional_parameter'
-        ) {
-          const nameNode = child.childForFieldName('pattern') || child.children[0];
-          if (nameNode && nameNode.type === 'identifier') {
-            params.add(getNodeText(nameNode, code));
-          }
-        }
-      }
-    }
-  });
-
-  return params;
 }
 
 // Check if a member access uses optional chaining
@@ -185,9 +153,8 @@ const nullableAccessDetector: Detector = {
     const results: DetectorResult[] = [];
     const root = tree.rootNode;
 
-    // Find null assignments and parameters
-    const nullAssignments = findNullAssignments(root, code, language);
-    const parameters = getParameters(root, code);
+    // Find null assignments with explicit evidence in the current file
+    const nullAssignments = findNullAssignments(root, code);
 
     // Find member access expressions
     const memberExpressions = findNodes(root, [
@@ -213,9 +180,7 @@ const nullableAccessDetector: Detector = {
 
       // Check if it's a potentially nullable variable
       const assignedNull = nullAssignments.has(targetName);
-      const isParameter = parameters.has(targetName);
-
-      if (!assignedNull && !isParameter) {
+      if (!assignedNull) {
         continue;
       }
 
@@ -226,9 +191,8 @@ const nullableAccessDetector: Detector = {
         continue;
       }
 
-      const isDefinite = assignedNull;
-      const certainty = isDefinite ? 'definite' : 'possible';
-      const severity = isDefinite ? 'error' : 'warning';
+      const certainty = 'definite';
+      const severity = 'error';
       const nullLabel = language === 'python' ? 'None' : 'null/undefined';
 
       results.push({
@@ -237,13 +201,13 @@ const nullableAccessDetector: Detector = {
         column: getColumnNumber(member),
         severity,
         certainty,
-        confidence: isDefinite ? 0.9 : 0.6,
+        confidence: 0.9,
         scope: 'function',
-        message: `${isDefinite ? 'Definite' : 'Potential'} access on ${nullLabel}: '${targetName}'`,
+        message: `Definite access on ${nullLabel}: '${targetName}'`,
         ast_facts: {
           target_identifier: targetName,
           guard_present_boolean: false,
-          assigned_null_like_before: assignedNull,
+          assigned_null_like_before: true,
         },
       });
     }

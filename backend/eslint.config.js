@@ -10,11 +10,6 @@ module.exports = tseslint.config(
   },
   {
     files: ['src/**/*.ts', 'tests/**/*.ts'],
-    languageOptions: {
-      parserOptions: {
-        project: './tsconfig.json',
-      },
-    },
     rules: {
       'no-console': 'off', // We use winston for logging
       '@typescript-eslint/explicit-function-return-type': 'off',

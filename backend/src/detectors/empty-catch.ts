@@ -20,7 +20,7 @@ import { findNodes, getNodeText, getLineNumber, getColumnNumber, walkTree } from
 function isEmptyOrTrivialBlock(
   blockNode: Parser.SyntaxNode | null,
   code: string,
-  language: Language
+  _language: Language
 ): { isEmpty: boolean; summary: string } {
   if (!blockNode) {
     return { isEmpty: true, summary: 'empty' };

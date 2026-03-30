@@ -111,6 +111,18 @@ except:
       expect(mistake).toHaveProperty('explanation');
       expect(mistake).toHaveProperty('fix');
     });
+
+    it('rejects syntax errors', async () => {
+      const response = await request(app)
+        .post('/api/v1/analyze')
+        .send({
+          code: 'function broken( {',
+          language: 'javascript',
+        })
+        .expect(400);
+
+      expect(response.body.message || response.body.error).toMatch(/parse|syntax/i);
+    });
   });
 
   describe('POST /api/v1/save and GET /api/v1/snippet/:id', () => {
@@ -162,7 +174,7 @@ except:
     });
 
     it('returns 400 for invalid snippet ID format', async () => {
-      const response = await request(app)
+      await request(app)
         .get('/api/v1/snippet/invalid/id/format')
         .expect(404); // This will be caught by router, not validation
     });

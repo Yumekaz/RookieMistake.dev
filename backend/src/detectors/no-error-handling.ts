@@ -7,7 +7,6 @@ import {
   isInsideTryBlock,
   getLineNumber,
   getColumnNumber,
-  walkTree,
 } from '../parser';
 
 /**

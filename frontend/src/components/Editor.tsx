@@ -83,7 +83,7 @@ export default function CodeEditor({
           options={{
             minimap: { enabled: false },
             fontSize: 14,
-            fontFamily: 'JetBrains Mono, Fira Code, Consolas, Monaco, monospace',
+            fontFamily: 'var(--font-mono), Fira Code, Consolas, Monaco, monospace',
             lineNumbers: 'on',
             scrollBeyondLastLine: false,
             automaticLayout: true,

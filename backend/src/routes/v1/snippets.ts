@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 import { saveSnippet, getSnippet } from '../../db';
-import { Language, AnalyzeResponse } from '../../types';
+import { AnalyzeResponse, Language } from '../../types';
 import {
   validateSaveRequest,
   validateSnippetParams,
@@ -35,7 +35,6 @@ router.post(
       mistakeCount: results.mistakes.length,
     });
 
-    // Save to database - cast results to AnalyzeResponse
     saveSnippet(id, code, language as Language, results as unknown as AnalyzeResponse);
 
     logger.info('Snippet saved successfully', { id });

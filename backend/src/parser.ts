@@ -69,7 +69,13 @@ export function getParser(language: Language): Parser {
  */
 export function parseCode(code: string, language: Language): Parser.Tree {
   const parser = getParser(language);
-  return parser.parse(code);
+  const tree = parser.parse(code);
+
+  if (tree.rootNode.hasError) {
+    throw new Error('Syntax errors detected in source code');
+  }
+
+  return tree;
 }
 
 /**

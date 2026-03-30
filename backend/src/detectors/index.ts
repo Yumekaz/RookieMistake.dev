@@ -41,7 +41,9 @@ export {
 
 // Get detectors for a specific language
 export function getDetectorsForLanguage(language: string): Detector[] {
-  return detectors.filter((d) => d.supportedLanguages.includes(language as any));
+  return detectors.filter((detector) =>
+    detector.supportedLanguages.some((supportedLanguage) => supportedLanguage === language)
+  );
 }
 
 // Get detector by name

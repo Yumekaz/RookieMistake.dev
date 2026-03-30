@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../lib/logger';
-import { recordRequestMetric, recordErrorMetric } from '../lib/metrics';
+import { recordRequestMetric } from '../lib/metrics';
 import config from '../config';
 
 // Custom error class with status code
@@ -87,7 +87,6 @@ export function errorHandler(
   err: Error | ApiError,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _next: NextFunction
 ): void {
   const requestId = generateRequestId();
@@ -98,10 +97,6 @@ export function errorHandler(
   // Record metrics
   const duration = Date.now() - (req.startTime || Date.now());
   recordRequestMetric(statusCode, duration, req.path);
-  
-  if (statusCode >= 400) {
-    recordErrorMetric(statusCode >= 500 ? 'server_error' : 'client_error', req.path);
-  }
 
   // Log the error
   const logData = {
@@ -156,12 +151,9 @@ export function asyncHandler(
   };
 }
 
-// Extend Express Request type to include startTime
-declare global {
-  namespace Express {
-    interface Request {
-      startTime?: number;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    startTime?: number;
   }
 }
 

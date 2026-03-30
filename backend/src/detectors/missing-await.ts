@@ -3,7 +3,6 @@ import { Detector, DetectorResult, Language } from '../types';
 import {
   findNodes,
   getNodeText,
-  findAncestor,
   isAsyncFunction,
   getEnclosingFunction,
   getLineNumber,
@@ -117,7 +116,7 @@ const missingAwaitDetector: Detector = {
   name: 'missing_await',
   supportedLanguages: ['javascript', 'typescript'],
 
-  detect(code: string, language: Language, tree: Parser.Tree): DetectorResult[] {
+  detect(code: string, _language: Language, tree: Parser.Tree): DetectorResult[] {
     const results: DetectorResult[] = [];
     const root = tree.rootNode;
 

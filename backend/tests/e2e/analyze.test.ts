@@ -1,6 +1,10 @@
 import request from 'supertest';
 import app from '../../src/index';
 
+type NamedMistake = {
+  name: string;
+};
+
 describe('E2E: POST /api/analyze', () => {
   it('analyzes JavaScript code and returns mistakes', async () => {
     const code = `
@@ -40,7 +44,7 @@ async function main() {
     expect(response.body.score).toBeGreaterThanOrEqual(0);
 
     // Check that we detected the expected issues
-    const mistakeNames = response.body.mistakes.map((m: any) => m.name);
+    const mistakeNames = response.body.mistakes.map((m: NamedMistake) => m.name);
     expect(mistakeNames).toContain('var_usage');
     expect(mistakeNames).toContain('missing_await');
     expect(mistakeNames).toContain('double_equals');
@@ -84,7 +88,7 @@ async function main() {
       .expect(200);
 
     expect(response.body.mistakes.length).toBeGreaterThan(0);
-    expect(response.body.mistakes.some((m: any) => m.name === 'missing_await')).toBe(true);
+    expect(response.body.mistakes.some((m: NamedMistake) => m.name === 'missing_await')).toBe(true);
   });
 
   it('analyzes Python code', async () => {
@@ -132,7 +136,12 @@ for (let i = 0; i < items.length; i++) {
       .send({ language: 'javascript' })
       .expect(400);
 
-    expect(response.body.error).toContain('code');
+    expect(response.body).toHaveProperty('error', 'Validation failed');
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'code' }),
+      ])
+    );
   });
 
   it('returns 400 for invalid language', async () => {
@@ -141,7 +150,12 @@ for (let i = 0; i < items.length; i++) {
       .send({ code: 'const x = 1;', language: 'ruby' })
       .expect(400);
 
-    expect(response.body.error).toContain('language');
+    expect(response.body).toHaveProperty('error', 'Validation failed');
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'language' }),
+      ])
+    );
   });
 
   it('returns deterministic results for same input', async () => {
@@ -174,7 +188,7 @@ if (x == 2) {
     }
   });
 
-  it('handles syntax errors gracefully', async () => {
+  it('rejects syntax errors with a 400 response', async () => {
     const code = `
 function broken( {
   // Missing closing paren
@@ -184,10 +198,9 @@ function broken( {
     const response = await request(app)
       .post('/api/analyze')
       .send({ code, language: 'javascript' })
-      .expect(200);
+      .expect(400);
 
-    // Should still return a response, possibly with errors or empty results
-    expect(response.body).toHaveProperty('mistakes');
+    expect(response.body.message || response.body.error).toMatch(/parse|syntax/i);
   });
 });
 
@@ -258,7 +271,12 @@ describe('E2E: POST /api/save and GET /api/snippet/:id', () => {
       .send({ language: 'javascript', results: { mistakes: [], score: 10 } })
       .expect(400);
 
-    expect(response.body.error).toContain('code');
+    expect(response.body).toHaveProperty('error', 'Validation failed');
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'code' }),
+      ])
+    );
   });
 
   it('returns 400 for missing results in save', async () => {
@@ -267,7 +285,12 @@ describe('E2E: POST /api/save and GET /api/snippet/:id', () => {
       .send({ code: 'const x = 1;', language: 'javascript' })
       .expect(400);
 
-    expect(response.body.error).toContain('results');
+    expect(response.body).toHaveProperty('error', 'Validation failed');
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'results' }),
+      ])
+    );
   });
 
   it('returns 400 for invalid language in save', async () => {
@@ -280,7 +303,12 @@ describe('E2E: POST /api/save and GET /api/snippet/:id', () => {
       })
       .expect(400);
 
-    expect(response.body.error).toContain('language');
+    expect(response.body).toHaveProperty('error', 'Validation failed');
+    expect(response.body.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'language' }),
+      ])
+    );
   });
 
   it('returns 404 for non-existent snippet', async () => {
@@ -288,6 +316,8 @@ describe('E2E: POST /api/save and GET /api/snippet/:id', () => {
       .get('/api/snippet/nonexistent123')
       .expect(404);
 
-    expect(response.body.error).toContain('not found');
+    expect(
+      `${response.body.error} ${response.body.message || ''}`.toLowerCase()
+    ).toContain('not found');
   });
 });

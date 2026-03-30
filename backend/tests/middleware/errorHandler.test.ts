@@ -11,6 +11,8 @@ import {
   asyncHandler,
 } from '../../src/middleware/errorHandler';
 
+const mockRecordRequestMetric = jest.fn();
+
 // Mock logger
 jest.mock('../../src/lib/logger', () => ({
   logger: {
@@ -22,12 +24,17 @@ jest.mock('../../src/lib/logger', () => ({
   logError: jest.fn(),
 }));
 
+jest.mock('../../src/lib/metrics', () => ({
+  recordRequestMetric: (...args: unknown[]) => mockRecordRequestMetric(...args),
+}));
+
 describe('Error Handler Middleware', () => {
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
   let mockNext: NextFunction;
 
   beforeEach(() => {
+    mockRecordRequestMetric.mockClear();
     mockReq = {
       method: 'GET',
       path: '/test',
@@ -126,6 +133,15 @@ describe('Error Handler Middleware', () => {
           requestId: expect.stringMatching(/^req_\d+_[a-z0-9]+$/),
         })
       );
+    });
+
+    it('records the request once for error responses', () => {
+      const error = new BadRequestError('Tracked');
+
+      errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockRecordRequestMetric).toHaveBeenCalledTimes(1);
+      expect(mockRecordRequestMetric).toHaveBeenCalledWith(400, expect.any(Number), '/test');
     });
   });
 

@@ -34,7 +34,7 @@ export const apiLimiter = rateLimit({
   // Use default key generator (handles IPv6 properly)
   handler: rateLimitHandler,
   skip: (req: Request) => {
-    return req.path === '/api/health' || isTestEnv;
+    return req.path === '/health' || isTestEnv;
   },
   validate: { xForwardedForHeader: false },
 });

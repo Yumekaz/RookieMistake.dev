@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { Mistake, Severity } from '@/lib/api';
 
 interface ResultsPanelProps {
@@ -42,6 +43,12 @@ const LightbulbIcon = () => (
 const CodeIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+  </svg>
+);
+
+const FixIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
   </svg>
 );
 
@@ -144,8 +151,6 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-import { useState } from 'react';
-
 function MistakeCard({ mistake, index }: { mistake: Mistake; index: number }) {
   const confidencePct = Math.round(mistake.confidence * 100);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -208,6 +213,19 @@ function MistakeCard({ mistake, index }: { mistake: Mistake; index: number }) {
             <p className="text-xs sm:text-sm text-gh-text-muted leading-relaxed pl-6">
               {mistake.explanation}
             </p>
+          </div>
+
+          {/* Suggested Fix */}
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-gh-success uppercase tracking-wide mb-1.5">
+              <FixIcon />
+              <span>Suggested Fix</span>
+            </div>
+            <div className="pl-6">
+              <p className="text-xs sm:text-sm text-gh-text-muted leading-relaxed bg-gh-bg-secondary/60 border border-gh-border rounded-lg px-3 py-2">
+                {mistake.fix}
+              </p>
+            </div>
           </div>
 
           {/* Code Example */}

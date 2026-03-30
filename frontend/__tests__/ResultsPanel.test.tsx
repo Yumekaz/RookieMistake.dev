@@ -99,6 +99,8 @@ describe('ResultsPanel Component', () => {
       expect(screen.getByText(/Col(umn)? 10/i)).toBeInTheDocument();
       expect(screen.getByText('double_equals')).toBeInTheDocument();
       expect(screen.getByText(/Type coercion can cause bugs/)).toBeInTheDocument();
+      expect(screen.getByText(/Suggested Fix/i)).toBeInTheDocument();
+      expect(screen.getByText(/Replace == with ===/)).toBeInTheDocument();
       expect(screen.getByText(/Code Example/i)).toBeInTheDocument();
     });
 
