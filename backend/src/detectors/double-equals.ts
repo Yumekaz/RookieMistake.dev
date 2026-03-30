@@ -45,6 +45,15 @@ const doubleEqualsDetector: Detector = {
       const leftText = getNodeText(left, code);
       const rightText = getNodeText(right, code);
 
+      const nullishValues = new Set(['null', 'undefined', 'None', 'void 0']);
+      const isNullishComparison =
+        nullishValues.has(leftText.trim()) || nullishValues.has(rightText.trim());
+
+      // Skip the common nullish idiom: `value == null` or `value != null`.
+      if (isNullishComparison) {
+        continue;
+      }
+
       // Generate message based on operator
       const strictOperator = operator === '==' ? '===' : '!==';
 

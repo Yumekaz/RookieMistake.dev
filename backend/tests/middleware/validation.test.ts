@@ -6,6 +6,8 @@ import {
   analyzeRequestSchema,
   saveRequestSchema,
   snippetParamsSchema,
+  recentSnippetsQuerySchema,
+  compareQuerySchema,
 } from '../../src/middleware/validation';
 
 // Mock logger
@@ -158,6 +160,22 @@ describe('Validation Middleware', () => {
         id: 'abc 123',
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('query schemas', () => {
+    it('validates recent snippets query', () => {
+      const result = recentSnippetsQuerySchema.safeParse({ limit: '15' });
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.limit).toBe(15);
+    });
+
+    it('validates compare query', () => {
+      const result = compareQuerySchema.safeParse({
+        baseId: 'abc123',
+        targetId: 'xyz789',
+      });
+      expect(result.success).toBe(true);
     });
   });
 

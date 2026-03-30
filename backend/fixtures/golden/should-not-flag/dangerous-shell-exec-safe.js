@@ -1,0 +1,1 @@
+spawn('git', ['status']);

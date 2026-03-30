@@ -12,7 +12,7 @@ AST-based code analysis API that detects common junior developer mistakes.
 
 ## Features
 - Supports JavaScript, TypeScript, and Python
-- Detects 10 common coding mistakes
+- Detects 20 high-signal coding mistakes
 - Deterministic analysis (no AI/ML)
 - Save and share code snippets
 
@@ -249,6 +249,119 @@ AST-based code analysis API that detects common junior developer mistakes.
             },
           },
         },
+        SnippetSummary: {
+          type: 'object',
+          required: [
+            'id',
+            'language',
+            'score',
+            'mistakeCount',
+            'created_at',
+            'codePreview',
+            'topSeverity',
+            'detectorNames',
+            'topMistakes',
+          ],
+          properties: {
+            id: {
+              type: 'string',
+              example: 'abc123xyz',
+            },
+            language: {
+              $ref: '#/components/schemas/Language',
+            },
+            score: {
+              type: 'integer',
+              minimum: 0,
+              maximum: 10,
+            },
+            mistakeCount: {
+              type: 'integer',
+              minimum: 0,
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+            },
+            codePreview: {
+              type: 'string',
+              example: 'async function fetchUser(id) {',
+            },
+            topSeverity: {
+              type: 'string',
+              enum: ['error', 'warning', 'info', 'none'],
+            },
+            detectorNames: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+            },
+            topMistakes: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+            },
+          },
+        },
+        SnippetComparisonSummary: {
+          type: 'object',
+          required: ['scoreDelta', 'mistakeDelta', 'persistedMistakes', 'newMistakes', 'resolvedMistakes'],
+          properties: {
+            scoreDelta: {
+              type: 'number',
+              example: 2,
+            },
+            mistakeDelta: {
+              type: 'number',
+              example: -1,
+            },
+            persistedMistakes: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            newMistakes: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            resolvedMistakes: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        SnippetComparison: {
+          type: 'object',
+          required: ['baseline', 'candidate', 'summary'],
+          properties: {
+            baseline: {
+              $ref: '#/components/schemas/SnippetSummary',
+            },
+            candidate: {
+              $ref: '#/components/schemas/SnippetSummary',
+            },
+            summary: {
+              $ref: '#/components/schemas/SnippetComparisonSummary',
+            },
+          },
+        },
+        RecentSnippetsResponse: {
+          type: 'object',
+          required: ['snippets', 'total'],
+          properties: {
+            snippets: {
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/SnippetSummary',
+              },
+            },
+            total: {
+              type: 'integer',
+              minimum: 0,
+            },
+          },
+        },
         Error: {
           type: 'object',
           required: ['error', 'message'],
@@ -478,6 +591,79 @@ AST-based code analysis API that detects common junior developer mistakes.
             },
             '500': {
               $ref: '#/components/responses/InternalError',
+            },
+          },
+        },
+      },
+      '/api/v1/snippets/recent': {
+        get: {
+          tags: ['Snippets'],
+          summary: 'Recent snippets',
+          description: 'List recent saved analyses for history and compare views',
+          parameters: [
+            {
+              name: 'limit',
+              in: 'query',
+              required: false,
+              description: 'Maximum number of snippets to return',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                maximum: 50,
+                default: 10,
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Recent snippets',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/RecentSnippetsResponse',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/v1/compare': {
+        get: {
+          tags: ['Snippets'],
+          summary: 'Compare two snippets',
+          description: 'Compare two saved analyses and summarize the difference',
+          parameters: [
+            {
+              name: 'baseId',
+              in: 'query',
+              required: true,
+              schema: {
+                type: 'string',
+              },
+            },
+            {
+              name: 'targetId',
+              in: 'query',
+              required: true,
+              schema: {
+                type: 'string',
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Snippet comparison',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/SnippetComparison',
+                  },
+                },
+              },
+            },
+            '404': {
+              $ref: '#/components/responses/NotFound',
             },
           },
         },

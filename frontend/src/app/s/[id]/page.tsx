@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import ResultsPanel from '@/components/ResultsPanel';
 import { getSnippet, type SnippetResponse } from '@/lib/api';
+import { sortMistakesByPriority } from '@/components/ResultsPanel';
 
 // Dynamic import for Monaco editor (client-side only)
 const CodeEditor = dynamic(() => import('@/components/Editor'), {
@@ -52,12 +53,15 @@ export default function SnippetPage() {
   const [snippet, setSnippet] = useState<SnippetResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMistakeId, setSelectedMistakeId] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadSnippet() {
       try {
         const data = await getSnippet(id);
         setSnippet(data);
+        const firstMistake = data.results.mistakes.slice().sort(sortMistakesByPriority)[0];
+        setSelectedMistakeId(firstMistake ? firstMistake.id : null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load snippet');
       } finally {
@@ -114,6 +118,7 @@ export default function SnippetPage() {
     month: 'short',
     day: 'numeric',
   });
+  const compareHref = `/compare?baseId=${snippet.id}`;
 
   return (
     <div className="min-h-screen flex flex-col bg-gh-bg">
@@ -151,6 +156,24 @@ export default function SnippetPage() {
                 {snippet.language.charAt(0).toUpperCase() + snippet.language.slice(1)}
               </span>
               <Link
+                href="/history"
+                className="btn-secondary flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>History</span>
+              </Link>
+              <Link
+                href={compareHref}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h6m-6 14h6M8 7h8M8 17h8M4 12h16" />
+                </svg>
+                <span>Compare</span>
+              </Link>
+              <Link
                 href="/"
                 className="btn-primary flex items-center gap-2"
               >
@@ -165,8 +188,34 @@ export default function SnippetPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-140px)] min-h-[500px]">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full overflow-hidden flex flex-col">
+        <div className="card mb-4 p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-gh-text-muted">Saved analysis</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-gh-text mt-1">
+              {snippet.results.mistakes.length} issue{snippet.results.mistakes.length !== 1 ? 's' : ''} captured at score {snippet.results.score}/10
+            </h2>
+            <p className="text-sm text-gh-text-muted mt-1 max-w-2xl">
+              This result is saved and shareable. Use the history view to compare runs or the compare view to measure a before/after fix.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/history" className="btn-secondary inline-flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Open history</span>
+            </Link>
+            <Link href={compareHref} className="btn-primary inline-flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h6m-6 14h6M8 7h8M8 17h8M4 12h16" />
+              </svg>
+              <span>Compare before/after</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[500px]">
           {/* Editor Panel */}
           <div className="flex flex-col h-full overflow-hidden">
             <div className="panel-header mb-3 shrink-0">
@@ -182,6 +231,8 @@ export default function SnippetPage() {
                 language={snippet.language}
                 onChange={() => { }}
                 readOnly
+                mistakes={snippet.results.mistakes}
+                activeMistakeId={selectedMistakeId}
               />
             </div>
           </div>
@@ -198,6 +249,8 @@ export default function SnippetPage() {
               <ResultsPanel
                 mistakes={snippet.results.mistakes}
                 score={snippet.results.score}
+                selectedMistakeId={selectedMistakeId}
+                onSelectMistake={(mistake) => setSelectedMistakeId(mistake.id)}
               />
             </div>
           </div>

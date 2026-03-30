@@ -23,8 +23,10 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const startTime = Date.now();
     const { code, language } = req.body as AnalyzeRequest;
+    const requestId = req.requestId;
 
     logger.info('Starting code analysis', {
+      requestId,
       language,
       codeLength: code.length,
     });
@@ -35,6 +37,7 @@ router.post(
       tree = parseCode(code, language as Language);
     } catch (parseError) {
       logger.warn('Code parsing failed', {
+        requestId,
         language,
         error: parseError instanceof Error ? parseError.message : 'Unknown error',
       });
@@ -79,6 +82,7 @@ router.post(
       } catch (detectorError) {
         // Log but don't fail the entire analysis
         logger.error('Detector failed', {
+          requestId,
           detector: detector.name,
           error: detectorError instanceof Error ? detectorError.message : 'Unknown error',
         });

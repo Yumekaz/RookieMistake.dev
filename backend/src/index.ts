@@ -11,6 +11,7 @@ validateConfig();
 // Middleware
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler, notFoundHandler, requestTimer } from './middleware/errorHandler';
+import { requestContext } from './middleware/requestContext';
 
 // Routes
 import v1Router from './routes/v1';
@@ -28,7 +29,8 @@ const app = express();
 // Trust proxy for rate limiting behind reverse proxy
 app.set('trust proxy', 1);
 
-// Request timing (must be first)
+// Request context and timing (must be first)
+app.use(requestContext);
 app.use(requestTimer);
 
 // CORS configuration

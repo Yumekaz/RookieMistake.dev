@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ResultsPanel from '../src/components/ResultsPanel';
 import type { Mistake } from '../src/lib/api';
 
@@ -30,7 +30,7 @@ describe('ResultsPanel Component', () => {
     it('displays zero score correctly', () => {
       const mistakes = Array(10).fill(null).map((_, i) => createMistake({ id: i }));
       render(<ResultsPanel mistakes={mistakes} score={0} />);
-      expect(screen.getByText('0')).toBeInTheDocument();
+      expect(screen.getAllByText('0').length).toBeGreaterThan(0);
       expect(screen.getByText('Needs Work')).toBeInTheDocument();
     });
 
@@ -101,7 +101,7 @@ describe('ResultsPanel Component', () => {
       expect(screen.getByText(/Type coercion can cause bugs/)).toBeInTheDocument();
       expect(screen.getByText(/Suggested Fix/i)).toBeInTheDocument();
       expect(screen.getByText(/Replace == with ===/)).toBeInTheDocument();
-      expect(screen.getByText(/Code Example/i)).toBeInTheDocument();
+      expect(screen.getByText(/Example/i)).toBeInTheDocument();
     });
 
     it('renders multiple mistakes', () => {
@@ -129,23 +129,71 @@ describe('ResultsPanel Component', () => {
     });
   });
 
+  describe('Grouping and Actions', () => {
+    it('groups mistakes by severity in priority order', () => {
+      const mistakes = [
+        createMistake({ id: 1, severity: 'info', message: 'Info issue' }),
+        createMistake({ id: 2, severity: 'error', message: 'Error issue' }),
+        createMistake({ id: 3, severity: 'warning', message: 'Warning issue' }),
+      ];
+
+      render(<ResultsPanel mistakes={mistakes} score={4} />);
+
+      const headings = screen.getAllByRole('heading', { level: 3 });
+      expect(headings[0]).toHaveTextContent(/Errors/i);
+      expect(headings[1]).toHaveTextContent(/Warnings/i);
+      expect(headings[2]).toHaveTextContent(/Notes/i);
+    });
+
+    it('jumps to the selected mistake when the Jump action is used', () => {
+      const onSelectMistake = jest.fn();
+      const mistake = createMistake({ line: 12, message: 'Jump target' });
+
+      render(
+        <ResultsPanel
+          mistakes={[mistake]}
+          score={7}
+          onSelectMistake={onSelectMistake}
+          selectedMistakeId={mistake.id}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /jump/i }));
+      expect(onSelectMistake).toHaveBeenCalledWith(mistake);
+    });
+
+    it('copies the suggested fix text', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.defineProperty(window.navigator, 'clipboard', {
+        value: { writeText },
+        configurable: true,
+      });
+
+      const mistake = createMistake({ fix: 'Replace x with y' });
+      render(<ResultsPanel mistakes={[mistake]} score={6} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /copy fix/i }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith('Replace x with y'));
+    });
+  });
+
   describe('Severity Badges', () => {
     it('displays ERROR severity badge', () => {
       const mistake = createMistake({ severity: 'error' });
       render(<ResultsPanel mistakes={[mistake]} score={9} />);
-      expect(screen.getByText(/ERROR/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/^Error$/i)[0]).toBeInTheDocument();
     });
 
     it('displays WARNING severity badge', () => {
       const mistake = createMistake({ severity: 'warning' });
       render(<ResultsPanel mistakes={[mistake]} score={9} />);
-      expect(screen.getByText(/WARNING/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/^Warning$/i)[0]).toBeInTheDocument();
     });
 
     it('displays INFO severity badge', () => {
       const mistake = createMistake({ severity: 'info' });
       render(<ResultsPanel mistakes={[mistake]} score={9} />);
-      expect(screen.getByText(/INFO/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/^Info$/i)[0]).toBeInTheDocument();
     });
 
     it('applies correct styling to severity badges', () => {
@@ -157,9 +205,9 @@ describe('ResultsPanel Component', () => {
 
       render(<ResultsPanel mistakes={mistakes} score={7} />);
 
-      const errorBadge = screen.getByText(/ERROR/i);
-      const warningBadge = screen.getByText(/WARNING/i);
-      const infoBadge = screen.getByText(/INFO/i);
+      const errorBadge = screen.getAllByText(/^Error$/i)[0];
+      const warningBadge = screen.getAllByText(/^Warning$/i)[0];
+      const infoBadge = screen.getAllByText(/^Info$/i)[0];
 
       expect(errorBadge.className).toMatch(/error|red|danger|gh-error/i);
       expect(warningBadge.className).toMatch(/warning|yellow|orange|amber|gh-warning/i);

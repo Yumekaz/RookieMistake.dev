@@ -20,8 +20,8 @@ if (x == 5) {
 
     it('detects != operator', () => {
       const code = `
-if (y != null) {
-  console.log('not null');
+if (y != 0) {
+  console.log('not zero');
 }
 `;
       const tree = parseCode(code, 'javascript');
@@ -73,6 +73,18 @@ if (x === 5) {
       const code = `
 if (y !== null) {
   console.log('not strictly null');
+}
+`;
+      const tree = parseCode(code, 'javascript');
+      const results = doubleEquals.detect(code, 'javascript', tree);
+
+      expect(results.length).toBe(0);
+    });
+
+    it('does not flag the nullish loose equality idiom', () => {
+      const code = `
+if (y != null) {
+  console.log('defined');
 }
 `;
       const tree = parseCode(code, 'javascript');

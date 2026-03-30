@@ -31,6 +31,28 @@ export interface SaveResponse {
   id: string;
 }
 
+export interface ApiErrorPayload {
+  error?: string;
+  message?: string;
+  details?: unknown;
+  requestId?: string;
+  statusCode?: number;
+}
+
+export class ApiError extends Error {
+  status: number;
+  details?: unknown;
+  requestId?: string;
+
+  constructor(message: string, status: number, details?: unknown, requestId?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
+    this.requestId = requestId;
+  }
+}
+
 export interface SnippetResponse {
   id: string;
   code: string;
@@ -39,23 +61,63 @@ export interface SnippetResponse {
   created_at: string;
 }
 
+export interface SnippetSummary {
+  id: string;
+  language: Language;
+  score: number;
+  mistakeCount: number;
+  created_at: string;
+  codePreview: string;
+  topSeverity: Severity | 'none';
+  detectorNames: string[];
+  topMistakes: string[];
+}
+
+export interface RecentSnippetsResponse {
+  snippets: SnippetSummary[];
+  total: number;
+}
+
+export interface SnippetComparisonSummary {
+  scoreDelta: number;
+  mistakeDelta: number;
+  persistedMistakes: string[];
+  newMistakes: string[];
+  resolvedMistakes: string[];
+}
+
+export interface SnippetComparisonResponse {
+  baseline: SnippetSummary;
+  candidate: SnippetSummary;
+  summary: SnippetComparisonSummary;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
+async function parseError(response: Response, fallback: string): Promise<ApiError> {
+  const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+  const message = payload.message || payload.error || fallback;
+  return new ApiError(message, response.status, payload.details, payload.requestId);
+}
+
+async function fetchJson<T>(input: string, init?: RequestInit, fallbackError: string = 'Request failed'): Promise<T> {
+  const response = init ? await fetch(input, init) : await fetch(input);
+
+  if (!response.ok) {
+    throw await parseError(response, fallbackError);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function analyzeCode(code: string, language: Language): Promise<AnalyzeResponse> {
-  const response = await fetch(`${API_BASE}/api/analyze`, {
+  return fetchJson<AnalyzeResponse>(`${API_BASE}/api/analyze`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ code, language }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Analysis failed' }));
-    throw new Error(error.error || 'Analysis failed');
-  }
-
-  return response.json();
+  }, 'Analysis failed');
 }
 
 export async function saveSnippet(
@@ -63,32 +125,24 @@ export async function saveSnippet(
   language: Language,
   results: AnalyzeResponse
 ): Promise<SaveResponse> {
-  const response = await fetch(`${API_BASE}/api/save`, {
+  return fetchJson<SaveResponse>(`${API_BASE}/api/save`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ code, language, results }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Save failed' }));
-    throw new Error(error.error || 'Save failed');
-  }
-
-  return response.json();
+  }, 'Save failed');
 }
 
 export async function getSnippet(id: string): Promise<SnippetResponse> {
-  const response = await fetch(`${API_BASE}/api/snippet/${id}`);
+  return fetchJson<SnippetResponse>(`${API_BASE}/api/snippet/${id}`, undefined, 'Fetch failed');
+}
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error('Snippet not found');
-    }
-    const error = await response.json().catch(() => ({ error: 'Fetch failed' }));
-    throw new Error(error.error || 'Fetch failed');
-  }
+export async function getRecentSnippets(limit: number = 10): Promise<RecentSnippetsResponse> {
+  return fetchJson<RecentSnippetsResponse>(`${API_BASE}/api/v1/snippets/recent?limit=${limit}`, undefined, 'Failed to fetch recent analyses');
+}
 
-  return response.json();
+export async function compareSnippets(baseId: string, targetId: string): Promise<SnippetComparisonResponse> {
+  const params = new URLSearchParams({ baseId, targetId });
+  return fetchJson<SnippetComparisonResponse>(`${API_BASE}/api/v1/compare?${params.toString()}`, undefined, 'Failed to compare snippets');
 }

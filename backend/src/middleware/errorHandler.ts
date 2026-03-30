@@ -71,9 +71,8 @@ interface ErrorResponse {
   requestId?: string;
 }
 
-// Generate unique request ID
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+function getRequestId(req: Request, res: Response): string {
+  return req.requestId || res.locals?.requestId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // 404 handler for unknown routes
@@ -89,14 +88,15 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  const requestId = generateRequestId();
+  const requestId = getRequestId(req, res);
+  res.setHeader('X-Request-ID', requestId);
 
   // Determine status code
   const statusCode = err instanceof ApiError ? err.statusCode : 500;
 
   // Record metrics
   const duration = Date.now() - (req.startTime || Date.now());
-  recordRequestMetric(statusCode, duration, req.path);
+  recordRequestMetric(statusCode, duration, req.route?.path || req.path, req.method, requestId);
 
   // Log the error
   const logData = {
@@ -151,27 +151,24 @@ export function asyncHandler(
   };
 }
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    startTime?: number;
-  }
-}
-
 // Request timing middleware
 export function requestTimer(req: Request, res: Response, next: NextFunction): void {
   req.startTime = Date.now();
 
   res.on('finish', () => {
     const duration = Date.now() - req.startTime!;
+    const endpoint = req.route?.path || req.path;
+    const requestId = getRequestId(req, res);
     
     // Record metrics for successful requests (errors are recorded in errorHandler)
     if (res.statusCode < 400) {
-      recordRequestMetric(res.statusCode, duration, req.path);
+      recordRequestMetric(res.statusCode, duration, endpoint, req.method, requestId);
     }
     
     logger.info('Request completed', {
+      requestId,
       method: req.method,
-      path: req.path,
+      path: endpoint,
       statusCode: res.statusCode,
       duration: `${duration}ms`,
     });

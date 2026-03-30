@@ -1,33 +1,80 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
-import { Snippet, AnalyzeResponse, Language } from './types';
+import { AnalyzeResponse, Language, Snippet, SnippetComparison, SnippetSummary } from './types';
+import config from './config';
 
-// Database file location - can be overridden via environment variable
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'snippets.db');
+const DB_PATH = config.dbPath || path.join(__dirname, '..', 'data', 'snippets.db');
 
-// Database instance
 let db: SqlJsDatabase | null = null;
 let dbInitialized = false;
 
-/**
- * Initialize the database
- */
+type SnippetRow = {
+  id: string;
+  code: string;
+  language: string;
+  results: string;
+  created_at: string;
+};
+
+function parseResults(results: string): AnalyzeResponse {
+  return JSON.parse(results) as AnalyzeResponse;
+}
+
+function createSnippetSummary(row: SnippetRow): SnippetSummary {
+  const results = parseResults(row.results);
+  const topMistakes = Array.from(new Set(results.mistakes.map((mistake) => mistake.name))).slice(0, 3);
+  const topSeverity = results.mistakes.some((mistake) => mistake.severity === 'error')
+    ? 'error'
+    : results.mistakes.some((mistake) => mistake.severity === 'warning')
+      ? 'warning'
+      : results.mistakes.some((mistake) => mistake.severity === 'info')
+        ? 'info'
+        : 'none';
+
+  return {
+    id: row.id,
+    language: row.language as Language,
+    score: results.score,
+    mistakeCount: results.mistakes.length,
+    created_at: row.created_at,
+    codePreview: row.code.split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 120) || '',
+    topSeverity,
+    detectorNames: Array.from(new Set(results.mistakes.map((mistake) => mistake.name))),
+    topMistakes,
+  };
+}
+
+function createSnippet(row: SnippetRow): Snippet {
+  return {
+    id: row.id,
+    code: row.code,
+    language: row.language as Language,
+    results: parseResults(row.results),
+    created_at: row.created_at,
+  };
+}
+
+function getDb(): SqlJsDatabase {
+  if (!db) {
+    throw new Error('Database not initialized. Call initDatabase() first.');
+  }
+
+  return db;
+}
+
 export async function initDatabase(): Promise<void> {
   if (dbInitialized) {
     return;
   }
 
-  // Ensure data directory exists
   const dataDir = path.dirname(DB_PATH);
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  // Initialize SQL.js
   const SQL = await initSqlJs();
 
-  // Load existing database or create new one
   if (fs.existsSync(DB_PATH)) {
     const fileBuffer = fs.readFileSync(DB_PATH);
     db = new SQL.Database(fileBuffer);
@@ -35,7 +82,6 @@ export async function initDatabase(): Promise<void> {
     db = new SQL.Database();
   }
 
-  // Create snippets table if it doesn't exist
   db.run(`
     CREATE TABLE IF NOT EXISTS snippets (
       id TEXT PRIMARY KEY,
@@ -46,21 +92,15 @@ export async function initDatabase(): Promise<void> {
     );
   `);
 
-  // Create index for faster lookups
   db.run(`
     CREATE INDEX IF NOT EXISTS idx_snippets_created_at ON snippets(created_at);
   `);
 
-  // Save to file
   saveToFile();
-
   dbInitialized = true;
   console.log('Database initialized at', DB_PATH);
 }
 
-/**
- * Save database to file
- */
 function saveToFile(): void {
   if (!db) return;
   const data = db.export();
@@ -68,19 +108,6 @@ function saveToFile(): void {
   fs.writeFileSync(DB_PATH, buffer);
 }
 
-/**
- * Get the database instance (throws if not initialized)
- */
-function getDb(): SqlJsDatabase {
-  if (!db) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
-  }
-  return db;
-}
-
-/**
- * Save a new snippet to the database
- */
 export function saveSnippet(
   id: string,
   code: string,
@@ -88,16 +115,15 @@ export function saveSnippet(
   results: AnalyzeResponse
 ): void {
   const database = getDb();
-  database.run(
-    `INSERT INTO snippets (id, code, language, results) VALUES (?, ?, ?, ?)`,
-    [id, code, language, JSON.stringify(results)]
-  );
+  database.run(`INSERT INTO snippets (id, code, language, results) VALUES (?, ?, ?, ?)`, [
+    id,
+    code,
+    language,
+    JSON.stringify(results),
+  ]);
   saveToFile();
 }
 
-/**
- * Retrieve a snippet by ID
- */
 export function getSnippet(id: string): Snippet | null {
   const database = getDb();
   const stmt = database.prepare(`
@@ -108,30 +134,15 @@ export function getSnippet(id: string): Snippet | null {
   stmt.bind([id]);
 
   if (stmt.step()) {
-    const row = stmt.getAsObject() as {
-      id: string;
-      code: string;
-      language: string;
-      results: string;
-      created_at: string;
-    };
+    const row = stmt.getAsObject() as SnippetRow;
     stmt.free();
-    return {
-      id: row.id,
-      code: row.code,
-      language: row.language as Language,
-      results: JSON.parse(row.results),
-      created_at: row.created_at,
-    };
+    return createSnippet(row);
   }
 
   stmt.free();
   return null;
 }
 
-/**
- * Check if a snippet exists
- */
 export function snippetExists(id: string): boolean {
   const database = getDb();
   const stmt = database.prepare(`SELECT 1 FROM snippets WHERE id = ?`);
@@ -141,10 +152,7 @@ export function snippetExists(id: string): boolean {
   return exists;
 }
 
-/**
- * Get recent snippets (for admin/debugging)
- */
-export function getRecentSnippets(limit: number = 10): Snippet[] {
+export function getRecentSnippets(limit: number = 10): SnippetSummary[] {
   const database = getDb();
   const stmt = database.prepare(`
     SELECT id, code, language, results, created_at
@@ -154,30 +162,55 @@ export function getRecentSnippets(limit: number = 10): Snippet[] {
   `);
   stmt.bind([limit]);
 
-  const snippets: Snippet[] = [];
+  const snippets: SnippetSummary[] = [];
   while (stmt.step()) {
-    const row = stmt.getAsObject() as {
-      id: string;
-      code: string;
-      language: string;
-      results: string;
-      created_at: string;
-    };
-    snippets.push({
-      id: row.id,
-      code: row.code,
-      language: row.language as Language,
-      results: JSON.parse(row.results),
-      created_at: row.created_at,
-    });
+    const row = stmt.getAsObject() as SnippetRow;
+    snippets.push(createSnippetSummary(row));
   }
   stmt.free();
   return snippets;
 }
 
-/**
- * Delete old snippets (for cleanup)
- */
+export function compareSnippets(baseId: string, targetId: string): SnippetComparison | null {
+  const baseSnippet = getSnippet(baseId);
+  const targetSnippet = getSnippet(targetId);
+
+  if (!baseSnippet || !targetSnippet) {
+    return null;
+  }
+
+  const baseMistakeNames = new Set(baseSnippet.results.mistakes.map((mistake) => mistake.name));
+  const targetMistakeNames = new Set(targetSnippet.results.mistakes.map((mistake) => mistake.name));
+
+  const persistedMistakes = [...baseMistakeNames].filter((name) => targetMistakeNames.has(name));
+  const newMistakes = [...targetMistakeNames].filter((name) => !baseMistakeNames.has(name));
+  const resolvedMistakes = [...baseMistakeNames].filter((name) => !targetMistakeNames.has(name));
+
+  return {
+    baseline: createSnippetSummary({
+      id: baseSnippet.id,
+      code: baseSnippet.code,
+      language: baseSnippet.language,
+      results: JSON.stringify(baseSnippet.results),
+      created_at: baseSnippet.created_at,
+    }),
+    candidate: createSnippetSummary({
+      id: targetSnippet.id,
+      code: targetSnippet.code,
+      language: targetSnippet.language,
+      results: JSON.stringify(targetSnippet.results),
+      created_at: targetSnippet.created_at,
+    }),
+    summary: {
+      scoreDelta: targetSnippet.results.score - baseSnippet.results.score,
+      mistakeDelta: targetSnippet.results.mistakes.length - baseSnippet.results.mistakes.length,
+      persistedMistakes,
+      newMistakes,
+      resolvedMistakes,
+    },
+  };
+}
+
 export function deleteOldSnippets(olderThanDays: number = 30): number {
   const database = getDb();
   const cutoffDate = new Date();
@@ -187,13 +220,9 @@ export function deleteOldSnippets(olderThanDays: number = 30): number {
   database.run(`DELETE FROM snippets WHERE created_at < ?`, [cutoffStr]);
   saveToFile();
 
-  // sql.js doesn't return affected rows easily, so return 0
   return 0;
 }
 
-/**
- * Close database connection (for graceful shutdown)
- */
 export function closeDatabase(): void {
   if (db) {
     saveToFile();
@@ -203,5 +232,4 @@ export function closeDatabase(): void {
   }
 }
 
-// Export the raw database instance for testing
 export { db };

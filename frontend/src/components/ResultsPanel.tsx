@@ -1,13 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Mistake, Severity } from '@/lib/api';
 
 interface ResultsPanelProps {
   mistakes: Mistake[];
   score: number;
   isLoading?: boolean;
+  selectedMistakeId?: number | null;
+  onSelectMistake?: (mistake: Mistake) => void;
 }
+
+const severityOrder: Severity[] = ['error', 'warning', 'info'];
+
+const severityMeta: Record<Severity, { label: string; description: string; className: string }> = {
+  error: {
+    label: 'Errors',
+    description: 'Fix these first. They usually map to broken behavior.',
+    className: 'bg-gh-error/10 text-gh-error border-gh-error/25',
+  },
+  warning: {
+    label: 'Warnings',
+    description: 'Worth fixing. These are the common bug sources.',
+    className: 'bg-gh-warning/10 text-gh-warning border-gh-warning/25',
+  },
+  info: {
+    label: 'Notes',
+    description: 'Lower urgency, but still signals weak spots.',
+    className: 'bg-gh-accent/10 text-gh-accent border-gh-accent/25',
+  },
+};
 
 // Icons
 const ErrorIcon = () => (
@@ -64,6 +86,39 @@ const CheckCircleIcon = () => (
   </svg>
 );
 
+const JumpIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7M5 12h11" />
+  </svg>
+);
+
+export function sortMistakesByPriority(left: Mistake, right: Mistake) {
+  const severityDelta = severityOrder.indexOf(left.severity) - severityOrder.indexOf(right.severity);
+  if (severityDelta !== 0) {
+    return severityDelta;
+  }
+
+  if (left.line !== right.line) {
+    return left.line - right.line;
+  }
+
+  if (left.column !== right.column) {
+    return left.column - right.column;
+  }
+
+  return left.id - right.id;
+}
+
+export function groupMistakesBySeverity(mistakes: Mistake[]) {
+  return severityOrder.reduce<Record<Severity, Mistake[]>>((acc, severity) => {
+    acc[severity] = mistakes
+      .filter((mistake) => mistake.severity === severity)
+      .slice()
+      .sort(sortMistakesByPriority);
+    return acc;
+  }, { error: [], warning: [], info: [] });
+}
+
 function SeverityBadge({ severity }: { severity: Severity }) {
   const config = {
     error: {
@@ -108,9 +163,9 @@ function CertaintyBadge({ certainty }: { certainty: Mistake['certainty'] }) {
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const getScoreConfig = (s: number) => {
-    if (s >= 8) return { className: 'score-high', label: 'Excellent', color: 'text-green-400' };
-    if (s >= 5) return { className: 'score-medium', label: 'Good', color: 'text-amber-400' };
+  const getScoreConfig = (value: number) => {
+    if (value >= 8) return { className: 'score-high', label: 'Excellent', color: 'text-green-400' };
+    if (value >= 5) return { className: 'score-medium', label: 'Good', color: 'text-amber-400' };
     return { className: 'score-low', label: 'Needs Work', color: 'text-gh-error' };
   };
 
@@ -130,9 +185,13 @@ function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard can fail in insecure contexts; keep the UI stable.
+    }
   };
 
   return (
@@ -143,7 +202,7 @@ function CodeBlock({ code }: { code: string }) {
       <button
         onClick={handleCopy}
         className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-gh-bg-tertiary/80 text-gh-text-muted opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-white hover:bg-gh-bg-tertiary"
-        title="Copy fix"
+        title="Copy code example"
       >
         {copied ? <CheckCircleIcon /> : <CopyIcon />}
       </button>
@@ -151,89 +210,133 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-function MistakeCard({ mistake, index }: { mistake: Mistake; index: number }) {
-  const confidencePct = Math.round(mistake.confidence * 100);
+function MistakeCard({
+  mistake,
+  index,
+  selected,
+  onSelectMistake,
+}: {
+  mistake: Mistake;
+  index: number;
+  selected: boolean;
+  onSelectMistake?: (mistake: Mistake) => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const confidencePct = Math.round(mistake.confidence * 100);
+
+  useEffect(() => {
+    if (selected) {
+      setIsExpanded(true);
+    }
+  }, [selected]);
+
+  const handleCopyFix = async () => {
+    try {
+      await navigator.clipboard.writeText(mistake.fix);
+      setCopyState('copied');
+      setTimeout(() => setCopyState('idle'), 2000);
+    } catch {
+      // Clipboard can fail in insecure contexts; keep the UI stable.
+    }
+  };
 
   return (
-    <div 
-      className="group bg-gh-bg-tertiary/50 border border-gh-border rounded-xl overflow-hidden hover:border-gh-text-muted/50 transition-all duration-300 animate-slide-in-up"
+    <div
+      className={`group bg-gh-bg-tertiary/50 border rounded-xl overflow-hidden transition-all duration-300 animate-slide-in-up ${
+        selected ? 'border-blue-400/60 ring-1 ring-blue-400/25 bg-blue-500/5' : 'border-gh-border hover:border-gh-text-muted/50'
+      }`}
       style={{ animationDelay: `${index * 50}ms` }}
+      data-selected={selected ? 'true' : 'false'}
     >
-      {/* Header - Clickable to expand/collapse */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-start justify-between gap-3 p-3 sm:p-4 text-left hover:bg-gh-bg-tertiary/80 transition-colors"
-      >
-        <div className="flex items-center gap-2 flex-wrap">
-          <SeverityBadge severity={mistake.severity} />
-          <CertaintyBadge certainty={mistake.certainty} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gh-text-muted font-mono bg-gh-bg-secondary px-2 py-1 rounded hidden sm:block">
-            {mistake.name}
-          </span>
-          <svg 
-            className={`w-4 h-4 text-gh-text-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
-
-      {/* Expandable Content */}
-      {isExpanded && (
-        <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3 animate-fade-in">
-          {/* Location */}
+      <div className="flex items-start justify-between gap-3 p-3 sm:p-4">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <SeverityBadge severity={mistake.severity} />
+            <CertaintyBadge certainty={mistake.certainty} />
+            <span className="text-[10px] text-gh-text-muted font-mono bg-gh-bg-secondary px-2 py-1 rounded">
+              {mistake.name}
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-xs text-gh-text-muted flex-wrap">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 7m0 13V7" />
             </svg>
             <span>Line {mistake.line}, Col {mistake.column}</span>
-            <span className="text-gh-border hidden sm:inline">•</span>
-            <span className="hidden sm:inline">{confidencePct}% confidence</span>
             <span className="text-gh-border">•</span>
+            <span className="hidden sm:inline">{confidencePct}% confidence</span>
+            <span className="text-gh-border hidden sm:inline">•</span>
             <span className="capitalize">{mistake.scope}</span>
           </div>
+        </div>
 
-          {/* Message */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onSelectMistake?.(mistake)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gh-border bg-gh-bg-secondary text-xs text-gh-text hover:border-blue-400/50 hover:text-white transition-colors"
+            title="Jump to this line"
+          >
+            <JumpIcon />
+            <span>Jump</span>
+          </button>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-2 rounded-md border border-gh-border bg-gh-bg-secondary text-gh-text-muted hover:text-white hover:border-gh-text-muted transition-colors"
+            title={isExpanded ? 'Collapse details' : 'Expand details'}
+          >
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3 animate-fade-in">
           <p className="text-gh-text font-medium text-sm leading-relaxed">
             {mistake.message}
           </p>
 
-          {/* Explanation */}
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-gh-text-muted uppercase tracking-wide mb-1.5">
               <LightbulbIcon />
-              <span>Explanation</span>
+              <span>Why it matters</span>
             </div>
             <p className="text-xs sm:text-sm text-gh-text-muted leading-relaxed pl-6">
               {mistake.explanation}
             </p>
           </div>
 
-          {/* Suggested Fix */}
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-gh-success uppercase tracking-wide mb-1.5">
-              <FixIcon />
-              <span>Suggested Fix</span>
+          <div className="rounded-lg border border-gh-border bg-gh-bg-secondary/60 p-3">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gh-success uppercase tracking-wide">
+                <FixIcon />
+                <span>Suggested fix</span>
+              </div>
+              <button
+                onClick={handleCopyFix}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gh-border bg-gh-bg-secondary text-xs text-gh-text hover:border-gh-success/40 hover:text-white transition-colors"
+                title="Copy suggested fix"
+              >
+                {copyState === 'copied' ? <CheckCircleIcon /> : <CopyIcon />}
+                <span>{copyState === 'copied' ? 'Copied' : 'Copy fix'}</span>
+              </button>
             </div>
-            <div className="pl-6">
-              <p className="text-xs sm:text-sm text-gh-text-muted leading-relaxed bg-gh-bg-secondary/60 border border-gh-border rounded-lg px-3 py-2">
-                {mistake.fix}
-              </p>
-            </div>
+            <p className="text-xs sm:text-sm text-gh-text-muted leading-relaxed">
+              {mistake.fix}
+            </p>
           </div>
 
-          {/* Code Example */}
           {mistake.codeExample && (
             <div>
               <div className="flex items-center gap-2 text-xs font-semibold text-gh-success uppercase tracking-wide mb-1.5">
                 <CodeIcon />
-                <span>Code Example</span>
+                <span>Example</span>
               </div>
               <div className="pl-6">
                 <CodeBlock code={mistake.codeExample} />
@@ -250,7 +353,11 @@ export default function ResultsPanel({
   mistakes,
   score,
   isLoading,
+  selectedMistakeId = null,
+  onSelectMistake,
 }: ResultsPanelProps) {
+  const groupedMistakes = useMemo(() => groupMistakesBySeverity(mistakes), [mistakes]);
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -284,26 +391,78 @@ export default function ResultsPanel({
     );
   }
 
+  const summaryCounts = severityOrder.map((severity) => ({
+    severity,
+    count: groupedMistakes[severity].length,
+  }));
+
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gh-border bg-gh-bg-secondary/30 shrink-0">
+      <div className="flex items-start justify-between gap-3 p-3 sm:p-4 border-b border-gh-border bg-gh-bg-secondary/30 shrink-0">
         <div>
           <h2 className="text-sm sm:text-base font-semibold text-gh-text">
             {mistakes.length} issue{mistakes.length !== 1 ? 's' : ''} found
           </h2>
           <p className="text-xs text-gh-text-muted mt-0.5 hidden sm:block">
-            Review and fix the detected problems
+            Grouped by severity so the most important fixes stay on top
           </p>
         </div>
-        <ScoreBadge score={score} />
+
+        <div className="flex flex-wrap justify-end gap-2">
+          {summaryCounts.map(({ severity, count }) => (
+            <span
+              key={severity}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border ${severityMeta[severity].className}`}
+            >
+              <span>{severityMeta[severity].label}</span>
+              <span className="font-semibold">{count}</span>
+            </span>
+          ))}
+          <ScoreBadge score={score} />
+        </div>
       </div>
 
-      {/* Mistakes List */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
-        {mistakes.map((mistake, index) => (
-          <MistakeCard key={`${mistake.name}-${mistake.line}-${index}`} mistake={mistake} index={index} />
-        ))}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+        {severityOrder.map((severity) => {
+          const items = groupedMistakes[severity];
+
+          if (items.length === 0) {
+            return null;
+          }
+
+          return (
+            <section key={severity} className="rounded-xl border border-gh-border overflow-hidden bg-gh-bg-tertiary/25">
+              <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-b border-gh-border bg-gh-bg-secondary/40">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <SeverityBadge severity={severity} />
+                    <h3 className="text-sm font-semibold text-gh-text">
+                      {severityMeta[severity].label}
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gh-text-muted mt-1">
+                    {severityMeta[severity].description}
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-md border border-gh-border bg-gh-bg-secondary text-xs text-gh-text-muted font-semibold">
+                  {items.length}
+                </span>
+              </div>
+
+              <div className="p-3 sm:p-4 space-y-3">
+                {items.map((mistake, index) => (
+                  <MistakeCard
+                    key={`${mistake.id}-${mistake.name}-${mistake.line}-${mistake.column}`}
+                    mistake={mistake}
+                    index={index}
+                    selected={selectedMistakeId === mistake.id}
+                    onSelectMistake={onSelectMistake}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

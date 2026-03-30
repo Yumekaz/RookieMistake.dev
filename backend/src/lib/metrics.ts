@@ -1,17 +1,32 @@
 /**
- * Metrics collection for monitoring and observability
- * 
- * This module provides simple in-memory metrics collection for:
- * - Request counts and latencies
- * - Error rates
- * - Analysis statistics
- * 
- * For production use, consider integrating with:
- * - Prometheus (prom-client)
- * - DataDog
- * - New Relic
- * - CloudWatch
+ * Metrics collection for monitoring and observability.
+ *
+ * The collector keeps lightweight in-memory aggregates only:
+ * - total request counts and latency percentiles
+ * - per-endpoint request breakdowns
+ * - analysis totals by language
+ * - recent request samples for debugging
  */
+
+interface RequestSample {
+  requestId: string;
+  method: string;
+  endpoint: string;
+  statusCode: number;
+  duration: number;
+  timestamp: string;
+}
+
+interface EndpointMetrics {
+  total: number;
+  success: number;
+  clientError: number;
+  serverError: number;
+  methods: Record<string, number>;
+  latencies: number[];
+  lastStatusCode?: number;
+  lastRequestId?: string;
+}
 
 interface RequestMetrics {
   total: number;
@@ -19,6 +34,7 @@ interface RequestMetrics {
   clientError: number;
   serverError: number;
   latencies: number[];
+  byEndpoint: Record<string, EndpointMetrics>;
 }
 
 interface AnalysisMetrics {
@@ -42,6 +58,7 @@ class MetricsCollector {
     clientError: 0,
     serverError: 0,
     latencies: [],
+    byEndpoint: {},
   };
 
   private analysisMetrics: AnalysisMetrics = {
@@ -58,65 +75,112 @@ class MetricsCollector {
     byEndpoint: {},
   };
 
+  private recentRequests: RequestSample[] = [];
   private startTime: number = Date.now();
 
-  /**
-   * Record a request metric
-   */
-  recordRequest(statusCode: number, duration: number, endpoint: string): void {
+  recordRequest(
+    statusCode: number,
+    duration: number,
+    endpoint: string,
+    method: string = 'GET',
+    requestId: string = 'unknown'
+  ): void {
     this.requestMetrics.total++;
     this.requestMetrics.latencies.push(duration);
 
-    // Keep only last 1000 latencies to prevent memory growth
     if (this.requestMetrics.latencies.length > 1000) {
       this.requestMetrics.latencies.shift();
     }
 
+    const endpointMetrics = this.requestMetrics.byEndpoint[endpoint] || {
+      total: 0,
+      success: 0,
+      clientError: 0,
+      serverError: 0,
+      methods: {},
+      latencies: [],
+    };
+
+    endpointMetrics.total++;
+    endpointMetrics.methods[method] = (endpointMetrics.methods[method] || 0) + 1;
+    endpointMetrics.latencies.push(duration);
+
+    if (endpointMetrics.latencies.length > 100) {
+      endpointMetrics.latencies.shift();
+    }
+
+    endpointMetrics.lastStatusCode = statusCode;
+    endpointMetrics.lastRequestId = requestId;
+    this.requestMetrics.byEndpoint[endpoint] = endpointMetrics;
+
+    const sample: RequestSample = {
+      requestId,
+      method,
+      endpoint,
+      statusCode,
+      duration,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.recentRequests.push(sample);
+    if (this.recentRequests.length > 20) {
+      this.recentRequests.shift();
+    }
+
     if (statusCode >= 500) {
       this.requestMetrics.serverError++;
+      endpointMetrics.serverError++;
       this.recordError('server_error', endpoint);
     } else if (statusCode >= 400) {
       this.requestMetrics.clientError++;
+      endpointMetrics.clientError++;
       this.recordError('client_error', endpoint);
     } else {
       this.requestMetrics.success++;
+      endpointMetrics.success++;
     }
   }
 
-  /**
-   * Record an analysis metric
-   */
   recordAnalysis(language: string, mistakeCount: number, duration: number): void {
     this.analysisMetrics.total++;
     this.analysisMetrics.byLanguage[language] = (this.analysisMetrics.byLanguage[language] || 0) + 1;
     this.analysisMetrics.mistakesFound += mistakeCount;
     this.analysisMetrics.durations.push(duration);
 
-    // Keep only last 1000 durations
     if (this.analysisMetrics.durations.length > 1000) {
       this.analysisMetrics.durations.shift();
     }
 
-    // Calculate running average
     const sum = this.analysisMetrics.durations.reduce((a, b) => a + b, 0);
     this.analysisMetrics.avgDuration = sum / this.analysisMetrics.durations.length;
   }
 
-  /**
-   * Record an error metric
-   */
   recordError(type: string, endpoint: string): void {
     this.errorMetrics.total++;
     this.errorMetrics.byType[type] = (this.errorMetrics.byType[type] || 0) + 1;
     this.errorMetrics.byEndpoint[endpoint] = (this.errorMetrics.byEndpoint[endpoint] || 0) + 1;
   }
 
-  /**
-   * Get current metrics snapshot
-   */
   getMetrics() {
     const now = Date.now();
     const uptime = now - this.startTime;
+
+    const endpointSummary = Object.entries(this.requestMetrics.byEndpoint)
+      .map(([endpoint, metrics]) => ({
+        endpoint,
+        total: metrics.total,
+        success: metrics.success,
+        clientError: metrics.clientError,
+        serverError: metrics.serverError,
+        methods: metrics.methods,
+        avgLatency: metrics.latencies.length
+          ? Math.round(metrics.latencies.reduce((a, b) => a + b, 0) / metrics.latencies.length)
+          : 0,
+        p95Latency: this.calculatePercentile(metrics.latencies, 95),
+        lastStatusCode: metrics.lastStatusCode,
+        lastRequestId: metrics.lastRequestId,
+      }))
+      .sort((a, b) => b.total - a.total);
 
     return {
       uptime: {
@@ -129,21 +193,23 @@ class MetricsCollector {
         clientErrors: this.requestMetrics.clientError,
         serverErrors: this.requestMetrics.serverError,
         errorRate: this.requestMetrics.total > 0
-          ? ((this.requestMetrics.clientError + this.requestMetrics.serverError) / this.requestMetrics.total * 100).toFixed(2) + '%'
-          : '0%',
+          ? ((this.requestMetrics.clientError + this.requestMetrics.serverError) / this.requestMetrics.total * 100).toFixed(2)
+          : '0.00',
         avgLatency: this.requestMetrics.latencies.length > 0
           ? Math.round(this.requestMetrics.latencies.reduce((a, b) => a + b, 0) / this.requestMetrics.latencies.length)
           : 0,
         p95Latency: this.calculatePercentile(this.requestMetrics.latencies, 95),
         p99Latency: this.calculatePercentile(this.requestMetrics.latencies, 99),
+        byEndpoint: endpointSummary,
+        recent: this.recentRequests,
       },
       analysis: {
         total: this.analysisMetrics.total,
         byLanguage: this.analysisMetrics.byLanguage,
         mistakesFound: this.analysisMetrics.mistakesFound,
         avgMistakesPerAnalysis: this.analysisMetrics.total > 0
-          ? (this.analysisMetrics.mistakesFound / this.analysisMetrics.total).toFixed(2)
-          : '0',
+          ? Number((this.analysisMetrics.mistakesFound / this.analysisMetrics.total).toFixed(2))
+          : 0,
         avgDuration: Math.round(this.analysisMetrics.avgDuration),
         p95Duration: this.calculatePercentile(this.analysisMetrics.durations, 95),
       },
@@ -155,21 +221,18 @@ class MetricsCollector {
     };
   }
 
-  /**
-   * Get health status
-   */
   getHealth(): {
     status: 'healthy' | 'degraded' | 'unhealthy';
     checks: Record<string, boolean>;
   } {
     const metrics = this.getMetrics();
-    const errorRate = parseFloat(metrics.requests.errorRate);
-    
+    const errorRate = Number(metrics.requests.errorRate);
+
     const checks = {
       uptime: true,
       lowErrorRate: errorRate < 5,
       acceptableLatency: metrics.requests.avgLatency < 1000,
-      memoryUsage: process.memoryUsage().heapUsed < 512 * 1024 * 1024, // < 512MB
+      memoryUsage: process.memoryUsage().heapUsed < 512 * 1024 * 1024,
     };
 
     const allHealthy = Object.values(checks).every(Boolean);
@@ -181,9 +244,6 @@ class MetricsCollector {
     };
   }
 
-  /**
-   * Reset all metrics (useful for testing)
-   */
   reset(): void {
     this.requestMetrics = {
       total: 0,
@@ -191,6 +251,7 @@ class MetricsCollector {
       clientError: 0,
       serverError: 0,
       latencies: [],
+      byEndpoint: {},
     };
     this.analysisMetrics = {
       total: 0,
@@ -204,6 +265,7 @@ class MetricsCollector {
       byType: {},
       byEndpoint: {},
     };
+    this.recentRequests = [];
     this.startTime = Date.now();
   }
 
@@ -227,12 +289,16 @@ class MetricsCollector {
   }
 }
 
-// Export singleton instance
 export const metrics = new MetricsCollector();
 
-// Helper functions for common operations
-export function recordRequestMetric(statusCode: number, duration: number, endpoint: string): void {
-  metrics.recordRequest(statusCode, duration, endpoint);
+export function recordRequestMetric(
+  statusCode: number,
+  duration: number,
+  endpoint: string,
+  method?: string,
+  requestId?: string
+): void {
+  metrics.recordRequest(statusCode, duration, endpoint, method, requestId);
 }
 
 export function recordAnalysisMetric(language: string, mistakeCount: number, duration: number): void {

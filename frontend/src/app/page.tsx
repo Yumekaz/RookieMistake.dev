@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import Link from 'next/link';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ResultsPanel from '@/components/ResultsPanel';
 import LanguageSelector from '@/components/LanguageSelector';
-import { analyzeCode, saveSnippet, type Language, type AnalyzeResponse } from '@/lib/api';
+import {
+  analyzeCode,
+  getRecentSnippets,
+  saveSnippet,
+  type Language,
+  type AnalyzeResponse,
+  type SnippetSummary,
+} from '@/lib/api';
+import { sortMistakesByPriority } from '@/components/ResultsPanel';
 
 // Dynamic import for Monaco editor (client-side only)
 const CodeEditor = dynamic(() => import('@/components/Editor'), {
@@ -119,6 +128,21 @@ export default function HomePage() {
     message: string;
   } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedMistakeId, setSelectedMistakeId] = useState<number | null>(null);
+  const [recentSnippets, setRecentSnippets] = useState<SnippetSummary[]>([]);
+
+  useEffect(() => {
+    async function loadRecentSnippets() {
+      try {
+        const response = await getRecentSnippets(4);
+        setRecentSnippets(response.snippets);
+      } catch {
+        setRecentSnippets([]);
+      }
+    }
+
+    loadRecentSnippets();
+  }, [results, shareUrl]);
 
   const handleLanguageChange = useCallback((newLanguage: Language) => {
     setLanguage(newLanguage);
@@ -127,6 +151,7 @@ export default function HomePage() {
     setError(null);
     setShareUrl(null);
     setShareFeedback(null);
+    setSelectedMistakeId(null);
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -143,9 +168,12 @@ export default function HomePage() {
     try {
       const response = await analyzeCode(code, language);
       setResults(response);
+      const firstMistake = response.mistakes.slice().sort(sortMistakesByPriority)[0];
+      setSelectedMistakeId(firstMistake ? firstMistake.id : null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analysis failed');
       setResults(null);
+      setSelectedMistakeId(null);
     } finally {
       setIsAnalyzing(false);
     }
@@ -372,6 +400,69 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-4 w-full overflow-hidden">
+        <div className="card mb-4 p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-gh-text-muted">Product surface</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-gh-text mt-1">
+              The analyzer is now backed by history, compare, and trust pages instead of a single response panel.
+            </h2>
+            <p className="text-sm text-gh-text-muted mt-2 max-w-3xl">
+              Run an analysis here, save it, then use history, compare, benchmark, detector catalog, and limitations to inspect what changed and why the result is trustworthy.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/history" className="btn-secondary inline-flex items-center gap-2">
+              <span>History</span>
+            </Link>
+            <Link href="/compare" className="btn-secondary inline-flex items-center gap-2">
+              <span>Compare</span>
+            </Link>
+            <Link href="/benchmark" className="btn-secondary inline-flex items-center gap-2">
+              <span>Benchmark</span>
+            </Link>
+            <Link href="/detectors" className="btn-secondary inline-flex items-center gap-2">
+              <span>Detectors</span>
+            </Link>
+            <Link href="/limitations" className="btn-secondary inline-flex items-center gap-2">
+              <span>Limitations</span>
+            </Link>
+          </div>
+        </div>
+
+        {recentSnippets.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+            {recentSnippets.map((snippet, index) => (
+              <Link
+                key={snippet.id}
+                href={index > 0 ? `/compare?baseId=${snippet.id}&targetId=${recentSnippets[index - 1].id}` : `/s/${snippet.id}`}
+                className="card p-4 hover:border-gh-text-muted/60 transition-colors"
+              >
+                <p className="text-xs uppercase tracking-[0.18em] text-gh-text-muted">
+                  {new Date(snippet.created_at).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </p>
+                <h3 className="text-sm font-semibold text-gh-text mt-2">
+                  {snippet.language} score {snippet.score}/10
+                </h3>
+                <p className="text-xs text-gh-text-muted mt-2 line-clamp-2">
+                  {snippet.codePreview || 'Saved run'}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {snippet.topMistakes.slice(0, 2).map((mistake) => (
+                    <span key={mistake} className="px-2 py-1 rounded-md bg-gh-bg-secondary border border-gh-border text-[11px] text-gh-text-muted">
+                      {mistake}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-140px)] min-h-[400px] sm:min-h-[500px]">
           {/* Editor Panel */}
           <div className="flex flex-col h-full overflow-hidden">
@@ -386,6 +477,8 @@ export default function HomePage() {
                 code={code}
                 language={language}
                 onChange={setCode}
+                mistakes={results?.mistakes ?? []}
+                activeMistakeId={selectedMistakeId}
               />
             </div>
           </div>
@@ -404,6 +497,8 @@ export default function HomePage() {
                   mistakes={results.mistakes}
                   score={results.score}
                   isLoading={isAnalyzing}
+                  selectedMistakeId={selectedMistakeId}
+                  onSelectMistake={(mistake) => setSelectedMistakeId(mistake.id)}
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 sm:p-8 empty-state">
@@ -427,10 +522,17 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-gh-border py-3 sm:py-4 bg-gh-bg-secondary/50">
-        <div className="max-w-7xl mx-auto px-4 text-center">
+        <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <p className="text-xs text-gh-text-muted">
             Open-source AST-based code analysis • Built for junior developers
           </p>
+          <div className="flex flex-wrap justify-center gap-3 text-xs text-gh-text-muted">
+            <Link href="/history" className="hover:text-white transition-colors">History</Link>
+            <Link href="/compare" className="hover:text-white transition-colors">Compare</Link>
+            <Link href="/benchmark" className="hover:text-white transition-colors">Benchmark</Link>
+            <Link href="/detectors" className="hover:text-white transition-colors">Detectors</Link>
+            <Link href="/limitations" className="hover:text-white transition-colors">Limitations</Link>
+          </div>
         </div>
       </footer>
     </div>

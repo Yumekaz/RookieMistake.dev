@@ -1,0 +1,208 @@
+import type { Language, Severity } from './api';
+
+export interface DetectorCatalogEntry {
+  name: string;
+  label: string;
+  severity: Severity;
+  languages: Language[];
+  category: string;
+  catches: string;
+  falsePositiveGuard: string;
+}
+
+export const DETECTOR_CATALOG: DetectorCatalogEntry[] = [
+  {
+    name: 'missing_await',
+    label: 'Missing await',
+    severity: 'error',
+    languages: ['javascript', 'typescript'],
+    category: 'Async correctness',
+    catches: 'Calls to known async functions that are left floating.',
+    falsePositiveGuard: 'Skips assigned promises and chained then/catch flows.',
+  },
+  {
+    name: 'double_equals',
+    label: 'Loose equality',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'Logic',
+    catches: 'Non-nullish uses of == and !=.',
+    falsePositiveGuard: 'Allows the common value == null idiom.',
+  },
+  {
+    name: 'nullable_access',
+    label: 'Nullable access',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Runtime safety',
+    catches: 'Property access on values previously assigned null, undefined, or None.',
+    falsePositiveGuard: 'Skips guarded branches and optional chaining.',
+  },
+  {
+    name: 'variable_shadowing',
+    label: 'Variable shadowing',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'Readability',
+    catches: 'Inner declarations that hide an outer variable with the same name.',
+    falsePositiveGuard: 'Only flags declarations with clear outer/inner lineage.',
+  },
+  {
+    name: 'off_by_one_loop',
+    label: 'Off-by-one loop',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Collections',
+    catches: 'Loop bounds that step one element past array or sequence length.',
+    falsePositiveGuard: 'Focuses on concrete length comparisons instead of generic loops.',
+  },
+  {
+    name: 'no_error_handling',
+    label: 'Unhandled risky call',
+    severity: 'warning',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Reliability',
+    catches: 'Risky async or network-ish calls with no surrounding error handling.',
+    falsePositiveGuard: 'Targets known call patterns instead of every function call.',
+  },
+  {
+    name: 'array_mutation',
+    label: 'Array mutation',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'State management',
+    catches: 'push/splice/sort-style mutations on shared arrays.',
+    falsePositiveGuard: 'Raises confidence when the target looks state-like.',
+  },
+  {
+    name: 'var_usage',
+    label: 'var usage',
+    severity: 'info',
+    languages: ['javascript'],
+    category: 'Language pitfalls',
+    catches: 'Block-scope leaks caused by var.',
+    falsePositiveGuard: 'Restricted to JavaScript only.',
+  },
+  {
+    name: 'console_log_left',
+    label: 'Debug console left in',
+    severity: 'info',
+    languages: ['javascript', 'typescript'],
+    category: 'Code hygiene',
+    catches: 'console.log/warn/error calls left in app code.',
+    falsePositiveGuard: 'Targets console calls only, not logger wrappers.',
+  },
+  {
+    name: 'empty_catch',
+    label: 'Empty catch',
+    severity: 'warning',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Reliability',
+    catches: 'catch/except blocks that swallow errors.',
+    falsePositiveGuard: 'Allows explicit handling and non-empty bodies.',
+  },
+  {
+    name: 'hardcoded_secret',
+    label: 'Hardcoded secret',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Security',
+    catches: 'Sensitive-looking variables assigned string literals.',
+    falsePositiveGuard: 'Skips env/config lookups and drops confidence for placeholder values.',
+  },
+  {
+    name: 'insecure_randomness',
+    label: 'Insecure randomness',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'Security',
+    catches: 'Math.random used for ids, tokens, secrets, or auth-adjacent values.',
+    falsePositiveGuard: 'Looks for risky naming context instead of every Math.random call.',
+  },
+  {
+    name: 'dangerous_eval',
+    label: 'Dynamic code execution',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Security',
+    catches: 'eval, exec, Function constructor, and string-based timers.',
+    falsePositiveGuard: 'Only flags concrete dynamic-execution APIs.',
+  },
+  {
+    name: 'dangerous_shell_exec',
+    label: 'Shell execution',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Security',
+    catches: 'exec/system/subprocess shell usage that can enable injection.',
+    falsePositiveGuard: 'Targets shell-style APIs rather than safe argument arrays.',
+  },
+  {
+    name: 'sql_string_interpolation',
+    label: 'SQL string interpolation',
+    severity: 'error',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Security',
+    catches: 'Queries composed with interpolation or concatenation.',
+    falsePositiveGuard: 'Leaves parameterized query calls alone.',
+  },
+  {
+    name: 'parameter_mutation',
+    label: 'Parameter mutation',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'Side effects',
+    catches: 'Functions that mutate an input parameter directly.',
+    falsePositiveGuard: 'Ignores local clones and non-mutating transforms.',
+  },
+  {
+    name: 'broad_exception',
+    label: 'Broad exception handler',
+    severity: 'warning',
+    languages: ['python'],
+    category: 'Reliability',
+    catches: 'except: or except Exception-style handlers.',
+    falsePositiveGuard: 'Flags only explicit broad catches, not specific exception types.',
+  },
+  {
+    name: 'duplicate_branch',
+    label: 'Duplicate branch',
+    severity: 'warning',
+    languages: ['javascript', 'typescript'],
+    category: 'Logic',
+    catches: 'if/else trees with duplicated conditions or identical branch bodies.',
+    falsePositiveGuard: 'Requires exact or near-exact branch duplication.',
+  },
+  {
+    name: 'missing_default_switch',
+    label: 'Missing switch default',
+    severity: 'info',
+    languages: ['javascript', 'typescript'],
+    category: 'Control flow',
+    catches: 'switch statements that silently ignore unknown values.',
+    falsePositiveGuard: 'Only flags switch blocks with cases but no default.',
+  },
+  {
+    name: 'unsafe_json_parse',
+    label: 'Unsafe JSON parse',
+    severity: 'warning',
+    languages: ['javascript', 'typescript', 'python'],
+    category: 'Input handling',
+    catches: 'JSON parsing performed outside an obvious try/catch or except guard.',
+    falsePositiveGuard: 'Skips parsing already wrapped in error handling.',
+  },
+];
+
+export const LIMITATIONS = [
+  'Analysis is file-local. Cross-file types, imports, and runtime wiring are not modeled.',
+  'The engine is intentionally high-signal, so it skips broad style linting and deeper dataflow.',
+  'Security detectors focus on obvious unsafe patterns, not full taint tracking.',
+  'History is saved server-side, but there is no per-user auth boundary yet.',
+  'Comparison is detector-name based, so it summarizes changes instead of diffing AST semantics.',
+];
+
+export const BENCHMARK_SUMMARY = {
+  detectorCount: DETECTOR_CATALOG.length,
+  goldenCorpusCases: 21,
+  languages: 3,
+};

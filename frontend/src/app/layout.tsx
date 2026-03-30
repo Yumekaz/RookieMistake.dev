@@ -13,13 +13,14 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'RookieMistakes.dev — Code Analysis Tool',
-  description: 'Detect common junior developer mistakes in JavaScript, TypeScript, and Python with deterministic AST-based analysis. No AI, no paid APIs.',
+  title: 'RookieMistakes.dev - Code Analysis Tool',
+  description:
+    'Detect common junior developer mistakes in JavaScript, TypeScript, and Python with deterministic AST-based analysis, saved history, and shareable results.',
   keywords: ['code analysis', 'javascript', 'typescript', 'python', 'ast', 'developer tools', 'code review'],
   authors: [{ name: 'RookieMistakes.dev' }],
   openGraph: {
-    title: 'RookieMistakes.dev — Code Analysis Tool',
-    description: 'Detect common coding mistakes with AST-based analysis',
+    title: 'RookieMistakes.dev - Code Analysis Tool',
+    description: 'Deterministic AST-based code analysis with history and comparison views',
     type: 'website',
   },
 };

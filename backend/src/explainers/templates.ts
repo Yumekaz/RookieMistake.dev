@@ -238,6 +238,150 @@ try {
     // Intentionally ignored - operation is optional
 }{{/if}}`,
   },
+
+  hardcoded_secret: {
+    explanation:
+      "The value assigned to '{{target_name}}' looks like a hardcoded secret. Shipping secrets in source code makes rotation and auditing harder and increases leak risk.",
+    fix: "Move the value to an environment variable or secret manager.",
+    codeExample: `// Before
+const apiKey = "sk_live_123";
+
+// After
+const apiKey = process.env.API_KEY;`,
+  },
+
+  insecure_randomness: {
+    explanation:
+      "The '{{api_name}}' call is being used for '{{context_name}}'. That source is predictable and should not be used for tokens, ids, or secrets.",
+    fix: "Use a cryptographically secure random API instead.",
+    codeExample: `// Before
+const token = Math.random().toString(36).slice(2);
+
+// After
+const token = crypto.randomUUID();`,
+  },
+
+  dangerous_eval: {
+    explanation:
+      "The '{{api_name}}' call can execute arbitrary code or strings at runtime. That is a direct security risk when the input is not fully trusted.",
+    fix: "Replace dynamic code execution with a parser, map, or explicit dispatch.",
+    codeExample: `// Before
+const result = eval(userInput);
+
+// After
+const result = handlers[action]?.(value);`,
+  },
+
+  dangerous_shell_exec: {
+    explanation:
+      "The '{{api_name}}' call executes a shell command. If any part of that command comes from input, it can lead to command injection.",
+    fix: "Pass arguments separately or avoid shell execution entirely.",
+    codeExample: `// Before
+exec(\`rm -rf \${folder}\`);
+
+// After
+spawn('rm', ['-rf', folder]);`,
+  },
+
+  sql_string_interpolation: {
+    explanation:
+      "This SQL query is built with interpolation or concatenation. That makes it vulnerable to injection and also harder to cache or reason about.",
+    fix: "Use parameterized queries instead of string building.",
+    codeExample: `// Before
+db.query(\`SELECT * FROM users WHERE id = \${userId}\`);
+
+// After
+db.query('SELECT * FROM users WHERE id = ?', [userId]);`,
+  },
+
+  parameter_mutation: {
+    explanation:
+      "The function mutates parameter '{{mutation_kind}}' in place. Mutating inputs makes callers see hidden side effects and can break shared references.",
+    fix: "Clone the input first, then mutate the copy or return a new value.",
+    codeExample: `// Before
+function addItem(items) {
+  items.push('x');
+  return items;
+}
+
+// After
+function addItem(items) {
+  return [...items, 'x'];
+}`,
+  },
+
+  broad_exception: {
+    explanation:
+      "{{#if bare_except_boolean}}A bare except catches every exception type.{{else}}This except clause is too broad and can hide unexpected failures.{{/if}}",
+    fix: "Catch the specific exception you expect and let the rest surface.",
+    codeExample: `# Before
+try:
+    risky()
+except Exception:
+    pass
+
+# After
+try:
+    risky()
+except ValueError:
+    handle_value_error()`,
+  },
+
+  duplicate_branch: {
+    explanation:
+      "This conditional has {{#if (eq branch_kind 'duplicate_condition')}}the same condition twice{{else}}identical branches{{/if}}. That usually means a logic bug or dead code.",
+    fix: "Remove the duplicate branch or make the conditions meaningfully different.",
+    codeExample: `// Before
+if (flag) {
+  return 1;
+} else {
+  return 1;
+}
+
+// After
+if (flag) {
+  return 1;
+}
+return 0;`,
+  },
+
+  missing_default_switch: {
+    explanation:
+      "This switch statement has no default branch, so unexpected values fall through without handling.",
+    fix: "Add a default branch that handles unknown values explicitly.",
+    codeExample: `// Before
+switch (status) {
+  case 'open':
+    return 1;
+  case 'closed':
+    return 0;
+}
+
+// After
+switch (status) {
+  case 'open':
+    return 1;
+  case 'closed':
+    return 0;
+  default:
+    return -1;
+}`,
+  },
+
+  unsafe_json_parse: {
+    explanation:
+      "The '{{api_name}}' call can throw if the input is malformed, and it is not wrapped in error handling here.",
+    fix: "Wrap JSON parsing in try/catch or validate the input before parsing.",
+    codeExample: `// Before
+const data = JSON.parse(input);
+
+// After
+try {
+  const data = JSON.parse(input);
+} catch (error) {
+  console.error('Invalid JSON', error);
+}`,
+  },
 };
 
 // Fallback template for unknown detectors

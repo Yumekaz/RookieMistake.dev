@@ -14,7 +14,7 @@ export type Scope = 'local' | 'function' | 'module';
 
 // AST facts extracted by detectors - varies by detector type
 export interface AstFacts {
-  [key: string]: string | number | boolean | string[] | undefined;
+  [key: string]: string | number | boolean | string[] | null | undefined;
 }
 
 // A single detected mistake
@@ -65,6 +65,33 @@ export interface Snippet {
   language: Language;
   results: AnalyzeResponse;
   created_at: string;
+}
+
+// Lightweight recent snippet record for history views
+export interface SnippetSummary {
+  id: string;
+  language: Language;
+  score: number;
+  mistakeCount: number;
+  created_at: string;
+  codePreview: string;
+  topSeverity: Severity | 'none';
+  detectorNames: string[];
+  topMistakes: string[];
+}
+
+export interface SnippetComparisonSummary {
+  scoreDelta: number;
+  mistakeDelta: number;
+  persistedMistakes: string[];
+  newMistakes: string[];
+  resolvedMistakes: string[];
+}
+
+export interface SnippetComparison {
+  baseline: SnippetSummary;
+  candidate: SnippetSummary;
+  summary: SnippetComparisonSummary;
 }
 
 // Detector interface - all detectors must implement this

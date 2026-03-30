@@ -65,15 +65,30 @@ export const saveRequestSchema = z.object({
 export type SaveRequest = z.infer<typeof saveRequestSchema>;
 
 // GET /api/snippet/:id params
+export const snippetIdSchema = z
+  .string()
+  .min(1, 'Snippet ID is required')
+  .max(50, 'Invalid snippet ID')
+  .regex(/^[a-zA-Z0-9_-]+$/, 'Invalid snippet ID format');
+
 export const snippetParamsSchema = z.object({
-  id: z
-    .string()
-    .min(1, 'Snippet ID is required')
-    .max(50, 'Invalid snippet ID')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Invalid snippet ID format'),
+  id: snippetIdSchema,
 });
 
 export type SnippetParams = z.infer<typeof snippetParamsSchema>;
+
+export const recentSnippetsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type RecentSnippetsQuery = z.infer<typeof recentSnippetsQuerySchema>;
+
+export const compareQuerySchema = z.object({
+  baseId: snippetIdSchema,
+  targetId: snippetIdSchema,
+});
+
+export type CompareQuery = z.infer<typeof compareQuerySchema>;
 
 // Validation middleware factory
 export function validate<T extends z.ZodSchema>(
@@ -127,16 +142,23 @@ export function validate<T extends z.ZodSchema>(
 export const validateAnalyzeRequest = validate(analyzeRequestSchema, 'body');
 export const validateSaveRequest = validate(saveRequestSchema, 'body');
 export const validateSnippetParams = validate(snippetParamsSchema, 'params');
+export const validateRecentSnippetsQuery = validate(recentSnippetsQuerySchema, 'query');
+export const validateCompareQuery = validate(compareQuerySchema, 'query');
 
 export default {
   validate,
   validateAnalyzeRequest,
   validateSaveRequest,
   validateSnippetParams,
+  validateRecentSnippetsQuery,
+  validateCompareQuery,
   schemas: {
     analyzeRequestSchema,
     saveRequestSchema,
     snippetParamsSchema,
+    snippetIdSchema,
+    recentSnippetsQuerySchema,
+    compareQuerySchema,
     languageSchema,
     severitySchema,
     certaintySchema,

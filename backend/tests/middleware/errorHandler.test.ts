@@ -141,7 +141,13 @@ describe('Error Handler Middleware', () => {
       errorHandler(error, mockReq as Request, mockRes as Response, mockNext);
 
       expect(mockRecordRequestMetric).toHaveBeenCalledTimes(1);
-      expect(mockRecordRequestMetric).toHaveBeenCalledWith(400, expect.any(Number), '/test');
+      expect(mockRecordRequestMetric).toHaveBeenCalledWith(
+        400,
+        expect.any(Number),
+        '/test',
+        'GET',
+        expect.stringMatching(/^req_/)
+      );
     });
   });
 

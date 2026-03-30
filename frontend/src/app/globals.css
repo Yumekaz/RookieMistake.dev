@@ -190,6 +190,32 @@ body {
   transform: translateY(-2px);
 }
 
+/* Monaco highlight states for findings */
+.monaco-editor .finding-highlight {
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.monaco-editor .finding-highlight-error {
+  background: linear-gradient(90deg, rgba(248, 81, 73, 0.16), rgba(248, 81, 73, 0.04));
+  box-shadow: inset 3px 0 0 rgba(248, 81, 73, 0.85);
+}
+
+.monaco-editor .finding-highlight-warning {
+  background: linear-gradient(90deg, rgba(210, 153, 34, 0.16), rgba(210, 153, 34, 0.04));
+  box-shadow: inset 3px 0 0 rgba(210, 153, 34, 0.85);
+}
+
+.monaco-editor .finding-highlight-info {
+  background: linear-gradient(90deg, rgba(47, 129, 247, 0.16), rgba(47, 129, 247, 0.04));
+  box-shadow: inset 3px 0 0 rgba(47, 129, 247, 0.85);
+}
+
+.monaco-editor .finding-highlight-active {
+  filter: saturate(1.2);
+  outline: 1px solid rgba(255, 255, 255, 0.12);
+  outline-offset: -1px;
+}
+
 /* Panel header */
 .panel-header {
   @apply flex items-center gap-2 text-xs font-semibold text-[#7d8590] uppercase tracking-wider;

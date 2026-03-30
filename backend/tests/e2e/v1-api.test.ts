@@ -180,6 +180,91 @@ except:
     });
   });
 
+  describe('History and compare endpoints', () => {
+    it('returns recent snippets', async () => {
+      const response = await request(app)
+        .get('/api/v1/snippets/recent?limit=5')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('snippets');
+      expect(response.body).toHaveProperty('total');
+      expect(Array.isArray(response.body.snippets)).toBe(true);
+    });
+
+    it('compares two saved snippets', async () => {
+      const first = await request(app)
+        .post('/api/v1/save')
+        .send({
+          code: 'const a = 1;',
+          language: 'javascript',
+          results: { mistakes: [], score: 10 },
+        })
+        .expect(201);
+
+      const second = await request(app)
+        .post('/api/v1/save')
+        .send({
+          code: 'var b = 1;',
+          language: 'javascript',
+          results: {
+            mistakes: [
+              {
+                id: 1,
+                name: 'var_usage',
+                line: 1,
+                column: 0,
+                severity: 'info',
+                certainty: 'heuristic',
+                confidence: 0.45,
+                scope: 'function',
+                message: 'Use let or const',
+                ast_facts: { variable_names: ['b'] },
+                explanation: 'Use let or const',
+                fix: 'Use let or const',
+              },
+            ],
+            score: 9,
+          },
+        })
+        .expect(201);
+
+      const response = await request(app)
+        .get(`/api/v1/compare?baseId=${first.body.id}&targetId=${second.body.id}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('baseline');
+      expect(response.body).toHaveProperty('candidate');
+      expect(response.body).toHaveProperty('summary');
+      expect(response.body.summary).toHaveProperty('scoreDelta');
+      expect(response.body.summary).toHaveProperty('mistakeDelta');
+      expect(response.body.summary).toHaveProperty('persistedMistakes');
+    });
+  });
+
+  describe('Metrics and tracing', () => {
+    it('sets a request id header on analyze responses', async () => {
+      const response = await request(app)
+        .post('/api/v1/analyze')
+        .send({
+          code: 'const x = 1;',
+          language: 'javascript',
+        })
+        .expect(200);
+
+      expect(response.headers['x-request-id']).toBeDefined();
+    });
+
+    it('returns structured metrics', async () => {
+      const response = await request(app)
+        .get('/api/v1/metrics')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data.requests).toHaveProperty('byEndpoint');
+      expect(response.body.data.requests).toHaveProperty('recent');
+    });
+  });
+
   describe('API versioning backwards compatibility', () => {
     it('legacy /api/analyze still works', async () => {
       const response = await request(app)

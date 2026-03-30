@@ -10,6 +10,16 @@ import arrayMutation from './array-mutation';
 import varUsage from './var-usage';
 import consoleLogLeft from './console-log-left';
 import emptyCatch from './empty-catch';
+import hardcodedSecret from './hardcoded-secret';
+import insecureRandomness from './insecure-randomness';
+import dangerousEval from './dangerous-eval';
+import dangerousShellExec from './dangerous-shell-exec';
+import sqlStringInterpolation from './sql-string-interpolation';
+import parameterMutation from './parameter-mutation';
+import broadException from './broad-exception';
+import duplicateBranch from './duplicate-branch';
+import missingDefaultSwitch from './missing-default-switch';
+import unsafeJsonParse from './unsafe-json-parse';
 
 // All available detectors
 export const detectors: Detector[] = [
@@ -23,6 +33,16 @@ export const detectors: Detector[] = [
   varUsage,
   consoleLogLeft,
   emptyCatch,
+  hardcodedSecret,
+  insecureRandomness,
+  dangerousEval,
+  dangerousShellExec,
+  sqlStringInterpolation,
+  parameterMutation,
+  broadException,
+  duplicateBranch,
+  missingDefaultSwitch,
+  unsafeJsonParse,
 ];
 
 // Export individual detectors for testing
@@ -37,6 +57,16 @@ export {
   varUsage,
   consoleLogLeft,
   emptyCatch,
+  hardcodedSecret,
+  insecureRandomness,
+  dangerousEval,
+  dangerousShellExec,
+  sqlStringInterpolation,
+  parameterMutation,
+  broadException,
+  duplicateBranch,
+  missingDefaultSwitch,
+  unsafeJsonParse,
 };
 
 // Get detectors for a specific language

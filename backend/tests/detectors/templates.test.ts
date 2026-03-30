@@ -14,6 +14,16 @@ describe('Explanation Templates', () => {
       expect(templates).toContain('var_usage');
       expect(templates).toContain('console_log_left');
       expect(templates).toContain('empty_catch');
+      expect(templates).toContain('hardcoded_secret');
+      expect(templates).toContain('insecure_randomness');
+      expect(templates).toContain('dangerous_eval');
+      expect(templates).toContain('dangerous_shell_exec');
+      expect(templates).toContain('sql_string_interpolation');
+      expect(templates).toContain('parameter_mutation');
+      expect(templates).toContain('broad_exception');
+      expect(templates).toContain('duplicate_branch');
+      expect(templates).toContain('missing_default_switch');
+      expect(templates).toContain('unsafe_json_parse');
     });
   });
 
@@ -24,6 +34,12 @@ describe('Explanation Templates', () => {
       expect(template?.explanation).toContain('{{callee_name}}');
       expect(template?.fix).toBeDefined();
       expect(template?.codeExample).toBeDefined();
+    });
+
+    it('returns template for new detectors', () => {
+      expect(getRawTemplate('hardcoded_secret')).not.toBeNull();
+      expect(getRawTemplate('dangerous_eval')).not.toBeNull();
+      expect(getRawTemplate('unsafe_json_parse')).not.toBeNull();
     });
 
     it('returns null for unknown detector', () => {
