@@ -1,0 +1,82 @@
+
+> rookie-mistakes-backend@1.0.0 start
+> node dist/index.js
+
+[dotenv@17.2.3] injecting env (12) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+2026-03-30 17:17:06 [[32minfo[39m]: Initializing application... {"service":"rookie-mistakes-api"}
+Database initialized at ./data/snippets.db
+Parser initialized with all language grammars
+2026-03-30 17:17:06 [[32minfo[39m]: Application initialized successfully {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]: 🚀 RookieMistakes API running on http://localhost:3001 {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    Environment: development {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    API Docs: http://localhost:3001/api/docs {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    Health: http://localhost:3001/api/health {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    Analyze: POST http://localhost:3001/api/v1/analyze {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    Save: POST http://localhost:3001/api/v1/save {"service":"rookie-mistakes-api"}
+2026-03-30 17:17:06 [[32minfo[39m]:    Get: GET http://localhost:3001/api/v1/snippet/:id {"service":"rookie-mistakes-api"}
+
+🚀 RookieMistakes API running on http://localhost:3001
+   📚 API Docs: http://localhost:3001/api/docs
+   ❤️  Health: http://localhost:3001/api/health
+
+2026-03-30 17:17:36 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_cf65412aee674a9099e14d161a55580c","method":"GET","path":"/health","statusCode":200,"duration":"3ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_90d48790c5844e82afcb3f330d649808","method":"GET","path":"/health","statusCode":200,"duration":"1ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_dda623bdd1ae455d8e80f9730c5bf26c","language":"javascript","codeLength":42}
+2026-03-30 17:18:08 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":42,"mistakeCount":3,"duration":"21ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_dda623bdd1ae455d8e80f9730c5bf26c","method":"POST","path":"/","statusCode":200,"duration":"36ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_6cfcb127f1f64baaa9f36fdaa11e86cf","language":"javascript","codeLength":12}
+2026-03-30 17:18:08 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":12,"mistakeCount":0,"duration":"1ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_6cfcb127f1f64baaa9f36fdaa11e86cf","method":"POST","path":"/","statusCode":200,"duration":"2ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Saving snippet {"service":"rookie-mistakes-api","requestId":"req_10c89e14396d45d1b4787f0b3ee38a15","id":"fgdkHot3TM","language":"javascript","codeLength":12,"mistakeCount":0}
+2026-03-30 17:18:08 [[32minfo[39m]: Snippet saved successfully {"service":"rookie-mistakes-api","id":"fgdkHot3TM"}
+2026-03-30 17:18:08 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_10c89e14396d45d1b4787f0b3ee38a15","method":"POST","path":"/save","statusCode":201,"duration":"12ms"}
+2026-03-30 17:18:08 [[32minfo[39m]: Retrieving snippet {"service":"rookie-mistakes-api","id":"fgdkHot3TM","requestId":"req_da1e47b34eae4c57a6b8f24d0692ead8"}
+2026-03-30 17:18:08 [[32minfo[39m]: Snippet retrieved successfully {"service":"rookie-mistakes-api","id":"fgdkHot3TM","requestId":"req_da1e47b34eae4c57a6b8f24d0692ead8"}
+2026-03-30 17:18:08 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_da1e47b34eae4c57a6b8f24d0692ead8","method":"GET","path":"/snippet/:id","statusCode":200,"duration":"6ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Starting project analysis {"service":"rookie-mistakes-api","requestId":"req_60cd3f0d21504c6ca40c07e01672235c","analysisId":"CZuaxXbiSn","profile":"balanced","fileCount":2}
+2026-03-30 17:18:14 [[32minfo[39m]: Project analysis completed {"service":"rookie-mistakes-api","requestId":"req_60cd3f0d21504c6ca40c07e01672235c","analysisId":"CZuaxXbiSn","profile":"balanced","fileCount":2,"findingCount":0,"parseErrorCount":1,"duration":"7ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_60cd3f0d21504c6ca40c07e01672235c","method":"POST","path":"/analyze","statusCode":201,"duration":"10ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Starting project analysis {"service":"rookie-mistakes-api","requestId":"req_a5ea319a1dcd4239931fdbedba4852c3","analysisId":"jEbOpzf1Dl","profile":"focused","fileCount":1}
+2026-03-30 17:18:14 [[32minfo[39m]: Project analysis completed {"service":"rookie-mistakes-api","requestId":"req_a5ea319a1dcd4239931fdbedba4852c3","analysisId":"jEbOpzf1Dl","profile":"focused","fileCount":1,"findingCount":1,"parseErrorCount":0,"duration":"5ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_a5ea319a1dcd4239931fdbedba4852c3","method":"POST","path":"/analyze","statusCode":201,"duration":"7ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Recording finding feedback {"service":"rookie-mistakes-api","requestId":"req_92ec140f0f454030ba3961abf8ca38b2","analysisId":"jEbOpzf1Dl","findingId":"bOTrQyDN8WAm","status":"good_catch"}
+2026-03-30 17:18:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_92ec140f0f454030ba3961abf8ca38b2","method":"POST","path":"/","statusCode":201,"duration":"4ms"}
+2026-03-30 17:18:14 [[32minfo[39m]: Recording finding feedback {"service":"rookie-mistakes-api","requestId":"req_8797ec27451a4d47a6a2cb12f744bc34","analysisId":"jEbOpzf1Dl","findingId":"bOTrQyDN8WAm","status":"false_positive"}
+2026-03-30 17:18:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_8797ec27451a4d47a6a2cb12f744bc34","method":"POST","path":"/","statusCode":200,"duration":"3ms"}
+2026-03-30 17:18:18 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_ab1221431adc4fb3aff1f4b51c134724","method":"GET","path":"/snippets/recent","statusCode":200,"duration":"2ms"}
+2026-03-30 17:18:24 [[32minfo[39m]: Starting project analysis {"service":"rookie-mistakes-api","requestId":"req_3957005f372649f38bcbf9e065cb6db4","analysisId":"91Wva7N_XI","profile":"balanced","fileCount":1}
+2026-03-30 17:18:24 [[32minfo[39m]: Project analysis completed {"service":"rookie-mistakes-api","requestId":"req_3957005f372649f38bcbf9e065cb6db4","analysisId":"91Wva7N_XI","profile":"balanced","fileCount":1,"findingCount":2,"parseErrorCount":0,"duration":"3ms"}
+2026-03-30 17:18:24 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_3957005f372649f38bcbf9e065cb6db4","method":"POST","path":"/analyze","statusCode":201,"duration":"6ms"}
+2026-03-30 17:18:24 [[32minfo[39m]: Retrieving project analysis {"service":"rookie-mistakes-api","requestId":"req_3e6ccea0e9f94f4395c09fbaf235f20e","analysisId":"91Wva7N_XI"}
+2026-03-30 17:18:24 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_3e6ccea0e9f94f4395c09fbaf235f20e","method":"GET","path":"/:id","statusCode":200,"duration":"3ms"}
+2026-03-30 17:18:32 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_641b993e4d5740f0b6c8aa9aa1b7e63f","language":"javascript","codeLength":387}
+2026-03-30 17:18:32 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":387,"mistakeCount":4,"duration":"21ms"}
+2026-03-30 17:18:32 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_641b993e4d5740f0b6c8aa9aa1b7e63f","method":"POST","path":"/","statusCode":200,"duration":"23ms"}
+2026-03-30 17:18:32 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_ef509eb56fa047ae8ebc1aa1279bccfa","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"2ms"}
+2026-03-30 17:23:22 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_16b197c0051b4becacb5baf10438fe2e","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"1ms"}
+2026-03-30 17:24:11 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_8258877c2e254375b577c673b8f958ae","language":"javascript","codeLength":387}
+2026-03-30 17:24:11 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":387,"mistakeCount":4,"duration":"6ms"}
+2026-03-30 17:24:11 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_8258877c2e254375b577c673b8f958ae","method":"POST","path":"/","statusCode":200,"duration":"8ms"}
+2026-03-30 17:24:11 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_1d77c5ccd947452480c3ea6a1723dc5d","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"1ms"}
+2026-03-30 17:25:14 [[32minfo[39m]: Saving snippet {"service":"rookie-mistakes-api","requestId":"req_1144e74800474ec38613be44b480c491","id":"5T3HtsV9gT","language":"javascript","codeLength":387,"mistakeCount":4}
+2026-03-30 17:25:14 [[32minfo[39m]: Snippet saved successfully {"service":"rookie-mistakes-api","id":"5T3HtsV9gT"}
+2026-03-30 17:25:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_1144e74800474ec38613be44b480c491","method":"POST","path":"/save","statusCode":201,"duration":"5ms"}
+2026-03-30 17:25:14 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_54e2eb0487e04b16acbae242ff407b19","method":"GET","path":"/snippets/recent","statusCode":200,"duration":"1ms"}
+2026-03-30 17:25:49 [[32minfo[39m]: Starting project analysis {"service":"rookie-mistakes-api","requestId":"req_0b9db6fc92e24a53867dc9fcd43d0b08","analysisId":"q2VWBvXmM6","profile":"balanced","fileCount":2}
+2026-03-30 17:25:49 [[32minfo[39m]: Project analysis completed {"service":"rookie-mistakes-api","requestId":"req_0b9db6fc92e24a53867dc9fcd43d0b08","analysisId":"q2VWBvXmM6","profile":"balanced","fileCount":2,"findingCount":3,"parseErrorCount":0,"duration":"7ms"}
+2026-03-30 17:25:49 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_0b9db6fc92e24a53867dc9fcd43d0b08","method":"POST","path":"/analyze","statusCode":201,"duration":"9ms"}
+2026-03-30 17:26:13 [[32minfo[39m]: Recording finding feedback {"service":"rookie-mistakes-api","requestId":"req_569faf3e97374d18a0f75aeffd67ffd5","analysisId":"q2VWBvXmM6","findingId":"NnrWLxGB_ysX","status":"good_catch"}
+2026-03-30 17:26:13 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_569faf3e97374d18a0f75aeffd67ffd5","method":"POST","path":"/","statusCode":201,"duration":"3ms"}
+2026-03-30 17:26:28 [[32minfo[39m]: Retrieving snippet {"service":"rookie-mistakes-api","id":"5T3HtsV9gT","requestId":"req_cbd5d6ccd6ba43ce83c13e10e077e0e3"}
+2026-03-30 17:26:28 [[32minfo[39m]: Snippet retrieved successfully {"service":"rookie-mistakes-api","id":"5T3HtsV9gT","requestId":"req_cbd5d6ccd6ba43ce83c13e10e077e0e3"}
+2026-03-30 17:26:28 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_cbd5d6ccd6ba43ce83c13e10e077e0e3","method":"GET","path":"/snippet/:id","statusCode":200,"duration":"3ms"}
+2026-03-30 17:26:35 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_7373de3066354cd1899db90a7502612b","method":"GET","path":"/snippets/recent","statusCode":200,"duration":"2ms"}
+2026-03-30 17:35:46 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_61cafe6f835e48f1829875e6957cbbde","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"1ms"}
+2026-03-30 17:35:55 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_6d0d702ead104148886b090087bef1aa","language":"javascript","codeLength":387}
+2026-03-30 17:35:55 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":387,"mistakeCount":4,"duration":"5ms"}
+2026-03-30 17:35:55 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_6d0d702ead104148886b090087bef1aa","method":"POST","path":"/","statusCode":200,"duration":"6ms"}
+2026-03-30 17:35:55 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_bca47a4b7abe4798bbc56ddb77677a94","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"1ms"}
+2026-03-30 17:36:35 [[32minfo[39m]: Starting code analysis {"service":"rookie-mistakes-api","requestId":"req_a94e087172a74038843a733c2864a1b8","language":"javascript","codeLength":387}
+2026-03-30 17:36:35 [[32minfo[39m]: Code analysis completed {"service":"rookie-mistakes-api","language":"javascript","codeLength":387,"mistakeCount":4,"duration":"4ms"}
+2026-03-30 17:36:35 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_a94e087172a74038843a733c2864a1b8","method":"POST","path":"/","statusCode":200,"duration":"5ms"}
+2026-03-30 17:36:35 [[32minfo[39m]: Request completed {"service":"rookie-mistakes-api","requestId":"req_939dc201646a4482b335667060b2da08","method":"GET","path":"/snippets/recent","statusCode":304,"duration":"1ms"}

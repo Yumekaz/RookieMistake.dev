@@ -1,0 +1,10 @@
+
+> rookie-mistakes-frontend@1.0.0 start
+> node scripts/start-standalone.js
+
+  ▲ Next.js 14.2.3
+  - Local:        http://localhost:3000
+  - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 84ms

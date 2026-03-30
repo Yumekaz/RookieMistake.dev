@@ -86,13 +86,13 @@ function normalizeRange(line: number, column: number) {
 function severityToMarkerSeverity(monaco: Monaco, severity: Severity) {
   switch (severity) {
     case 'error':
-      return monaco.editor.MarkerSeverity.Error;
+      return monaco.MarkerSeverity.Error;
     case 'warning':
-      return monaco.editor.MarkerSeverity.Warning;
+      return monaco.MarkerSeverity.Warning;
     case 'info':
-      return monaco.editor.MarkerSeverity.Info;
+      return monaco.MarkerSeverity.Info;
     default:
-      return monaco.editor.MarkerSeverity.Info;
+      return monaco.MarkerSeverity.Info;
   }
 }
 
