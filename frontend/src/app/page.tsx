@@ -9,6 +9,8 @@ import {
   analyzeCode,
   getRecentSnippets,
   saveSnippet,
+  submitFindingFeedback,
+  type Mistake,
   type Language,
   type AnalyzeResponse,
   type SnippetSummary,
@@ -212,6 +214,15 @@ export default function HomePage() {
     }
   }, [code, language, results]);
 
+  const handleFindingFeedback = useCallback(async (mistake: Mistake, verdict: 'good_catch' | 'false_positive') => {
+    await submitFindingFeedback({
+      verdict,
+      finding: mistake,
+      language,
+      filePath: 'snippet',
+    });
+  }, [language]);
+
   // Create ripple effect on button click
   const createRipple = (e: React.MouseEvent<HTMLButtonElement>) => {
     const button = e.currentTarget;
@@ -414,6 +425,9 @@ export default function HomePage() {
             <Link href="/history" className="btn-secondary inline-flex items-center gap-2">
               <span>History</span>
             </Link>
+            <Link href="/project" className="btn-secondary inline-flex items-center gap-2">
+              <span>Project mode</span>
+            </Link>
             <Link href="/compare" className="btn-secondary inline-flex items-center gap-2">
               <span>Compare</span>
             </Link>
@@ -499,6 +513,7 @@ export default function HomePage() {
                   isLoading={isAnalyzing}
                   selectedMistakeId={selectedMistakeId}
                   onSelectMistake={(mistake) => setSelectedMistakeId(mistake.id)}
+                  onFeedback={handleFindingFeedback}
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 sm:p-8 empty-state">
@@ -528,6 +543,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap justify-center gap-3 text-xs text-gh-text-muted">
             <Link href="/history" className="hover:text-white transition-colors">History</Link>
+            <Link href="/project" className="hover:text-white transition-colors">Project</Link>
             <Link href="/compare" className="hover:text-white transition-colors">Compare</Link>
             <Link href="/benchmark" className="hover:text-white transition-colors">Benchmark</Link>
             <Link href="/detectors" className="hover:text-white transition-colors">Detectors</Link>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { Mistake, Severity } from '@/lib/api';
+import type { FindingFeedbackKind, Mistake, Severity } from '@/lib/api';
 
 interface ResultsPanelProps {
   mistakes: Mistake[];
@@ -9,6 +9,7 @@ interface ResultsPanelProps {
   isLoading?: boolean;
   selectedMistakeId?: number | null;
   onSelectMistake?: (mistake: Mistake) => void;
+  onFeedback?: (mistake: Mistake, verdict: FindingFeedbackKind) => Promise<void> | void;
 }
 
 const severityOrder: Severity[] = ['error', 'warning', 'info'];
@@ -215,14 +216,18 @@ function MistakeCard({
   index,
   selected,
   onSelectMistake,
+  onFeedback,
 }: {
   mistake: Mistake;
   index: number;
   selected: boolean;
   onSelectMistake?: (mistake: Mistake) => void;
+  onFeedback?: (mistake: Mistake, verdict: FindingFeedbackKind) => Promise<void> | void;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [feedbackState, setFeedbackState] = useState<'idle' | FindingFeedbackKind>('idle');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const confidencePct = Math.round(mistake.confidence * 100);
 
   useEffect(() => {
@@ -240,6 +245,25 @@ function MistakeCard({
       // Clipboard can fail in insecure contexts; keep the UI stable.
     }
   };
+
+  const handleFeedback = async (verdict: FindingFeedbackKind) => {
+    if (isSubmittingFeedback) {
+      return;
+    }
+
+    setIsSubmittingFeedback(true);
+
+    try {
+      await onFeedback?.(mistake, verdict);
+      setFeedbackState(verdict);
+    } catch {
+      // Feedback is best-effort; keep the card usable if persistence fails.
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  const feedbackLabel = feedbackState === 'good_catch' ? 'Marked as good catch' : feedbackState === 'false_positive' ? 'Marked as false positive' : null;
 
   return (
     <div
@@ -343,6 +367,32 @@ function MistakeCard({
               </div>
             </div>
           )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              onClick={() => handleFeedback('good_catch')}
+              disabled={isSubmittingFeedback}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-green-500/25 bg-green-500/10 text-xs text-green-300 hover:bg-green-500/15 hover:border-green-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <CheckCircleIcon />
+              <span>Good catch</span>
+            </button>
+            <button
+              onClick={() => handleFeedback('false_positive')}
+              disabled={isSubmittingFeedback}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-amber-500/25 bg-amber-500/10 text-xs text-amber-300 hover:bg-amber-500/15 hover:border-amber-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M4.93 4.93l14.14 14.14" />
+              </svg>
+              <span>False positive</span>
+            </button>
+            {feedbackLabel && (
+              <span className="text-[11px] text-gh-text-muted rounded-md border border-gh-border bg-gh-bg-secondary px-2 py-1">
+                {feedbackLabel}
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -355,6 +405,7 @@ export default function ResultsPanel({
   isLoading,
   selectedMistakeId = null,
   onSelectMistake,
+  onFeedback,
 }: ResultsPanelProps) {
   const groupedMistakes = useMemo(() => groupMistakesBySeverity(mistakes), [mistakes]);
 
@@ -457,6 +508,7 @@ export default function ResultsPanel({
                     index={index}
                     selected={selectedMistakeId === mistake.id}
                     onSelectMistake={onSelectMistake}
+                    onFeedback={onFeedback}
                   />
                 ))}
               </div>

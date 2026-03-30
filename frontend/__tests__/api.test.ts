@@ -1,4 +1,12 @@
-import { analyzeCode, saveSnippet, getSnippet, ApiError, Mistake } from '../src/lib/api';
+import {
+  analyzeCode,
+  analyzeProject,
+  getSnippet,
+  saveSnippet,
+  submitFindingFeedback,
+  ApiError,
+  type Mistake,
+} from '../src/lib/api';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -6,7 +14,7 @@ global.fetch = mockFetch;
 
 describe('API Client', () => {
   beforeEach(() => {
-    mockFetch.mockClear();
+    mockFetch.mockReset();
   });
 
   describe('analyzeCode', () => {
@@ -246,6 +254,93 @@ describe('API Client', () => {
 
         expect(mockFetch).toHaveBeenLastCalledWith(`/api/snippet/${id}`);
       }
+    });
+  });
+
+  describe('analyzeProject', () => {
+    it('falls back to local multi-file analysis when the project endpoint is missing', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({ error: 'Not found' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ mistakes: [], score: 10 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({
+            mistakes: [
+              {
+                id: 2,
+                name: 'console_log_left',
+                line: 3,
+                column: 1,
+                severity: 'info',
+                certainty: 'heuristic',
+                confidence: 0.55,
+                scope: 'function',
+                message: 'Remove console.log',
+                ast_facts: {},
+                explanation: 'Debug logging was left behind',
+                fix: 'Remove the call',
+              },
+            ],
+            score: 9,
+          }),
+        });
+
+      const result = await analyzeProject({
+        profile: 'balanced',
+        files: [
+          { id: 'one', path: 'src/one.ts', language: 'typescript', code: 'const one = 1;' },
+          { id: 'two', path: 'src/two.ts', language: 'typescript', code: 'console.log(two);' },
+        ],
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(result.source).toBe('local');
+      expect(result.files).toHaveLength(2);
+      expect(result.summary.fileCount).toBe(2);
+      expect(result.summary.findingCount).toBe(1);
+      expect(result.summary.score).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('submitFindingFeedback', () => {
+    it('falls back locally when the feedback route is missing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'Not found' }),
+      });
+
+      const result = await submitFindingFeedback({
+        verdict: 'good_catch',
+        language: 'typescript',
+        filePath: 'src/app.ts',
+        finding: {
+          id: 1,
+          name: 'test_mistake',
+          line: 1,
+          column: 0,
+          severity: 'warning',
+          certainty: 'possible',
+          confidence: 0.5,
+          scope: 'function',
+          message: 'Test',
+          ast_facts: {},
+          explanation: 'Test',
+          fix: 'Test',
+        },
+      });
+
+      expect(result.source).toBe('local');
+      expect(result.accepted).toBe(true);
+      expect(result.verdict).toBe('good_catch');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

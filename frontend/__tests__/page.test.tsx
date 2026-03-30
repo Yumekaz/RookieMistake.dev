@@ -1,19 +1,27 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import HomePage from '../src/app/page';
-import { analyzeCode, saveSnippet } from '@/lib/api';
+import { analyzeCode, saveSnippet, submitFindingFeedback } from '@/lib/api';
 
 jest.mock('@/lib/api', () => ({
   analyzeCode: jest.fn(),
   saveSnippet: jest.fn(),
+  submitFindingFeedback: jest.fn(),
 }));
 
 const mockedAnalyzeCode = analyzeCode as jest.MockedFunction<typeof analyzeCode>;
 const mockedSaveSnippet = saveSnippet as jest.MockedFunction<typeof saveSnippet>;
+const mockedSubmitFindingFeedback = submitFindingFeedback as jest.MockedFunction<typeof submitFindingFeedback>;
 
 describe('HomePage share flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedSubmitFindingFeedback.mockResolvedValue({
+      accepted: true,
+      source: 'local',
+      verdict: 'good_catch',
+      recordedAt: new Date().toISOString(),
+    });
   });
 
   function mockClipboard(writeText = jest.fn().mockResolvedValue(undefined)) {

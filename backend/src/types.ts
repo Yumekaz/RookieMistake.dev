@@ -3,6 +3,9 @@ import type { Parser } from './parser';
 // Supported languages for analysis
 export type Language = 'javascript' | 'typescript' | 'python';
 
+// Analysis profiles for project-level analysis
+export type AnalysisProfile = 'balanced' | 'focused' | 'strict';
+
 // Severity levels for detected mistakes
 export type Severity = 'error' | 'warning' | 'info';
 
@@ -42,6 +45,19 @@ export interface AnalyzeResponse {
 
 // Request body for /api/analyze
 export interface AnalyzeRequest {
+  code: string;
+  language: Language;
+}
+
+// Request body for project analysis
+export interface ProjectAnalysisRequest {
+  profile: AnalysisProfile;
+  files: ProjectFileInput[];
+}
+
+// Input file for project analysis
+export interface ProjectFileInput {
+  path: string;
   code: string;
   language: Language;
 }
@@ -92,6 +108,66 @@ export interface SnippetComparison {
   baseline: SnippetSummary;
   candidate: SnippetSummary;
   summary: SnippetComparisonSummary;
+}
+
+export interface ProjectFinding extends Mistake {
+  findingId: string;
+  filePath: string;
+  language: Language;
+}
+
+export interface ProjectFileAnalysis {
+  path: string;
+  language: Language;
+  lineCount: number;
+  score: number;
+  findingCount: number;
+  findings: ProjectFinding[];
+  status: 'ok' | 'parse_error';
+  error?: string;
+}
+
+export interface ProjectAnalysisSummary {
+  profile: AnalysisProfile;
+  score: number;
+  averageFileScore: number;
+  fileCount: number;
+  filesWithFindings: number;
+  parseErrorCount: number;
+  findingCount: number;
+  severityCounts: Record<Severity, number>;
+}
+
+export interface ProjectAnalysisResponse {
+  analysisId: string;
+  profile: AnalysisProfile;
+  summary: ProjectAnalysisSummary;
+  files: ProjectFileAnalysis[];
+  findings: ProjectFinding[];
+}
+
+export interface ProjectAnalysisRecord extends ProjectAnalysisResponse {
+  request: ProjectAnalysisRequest;
+  created_at: string;
+}
+
+export type FindingFeedbackStatus = 'good_catch' | 'false_positive';
+
+export interface FindingFeedback {
+  id: string;
+  analysisId: string;
+  findingId: string;
+  status: FindingFeedbackStatus;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FindingFeedbackRequest {
+  analysisId: string;
+  findingId: string;
+  status: FindingFeedbackStatus;
+  note?: string;
 }
 
 // Detector interface - all detectors must implement this

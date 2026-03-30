@@ -1,7 +1,18 @@
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
-import { AnalyzeResponse, Language, Snippet, SnippetComparison, SnippetSummary } from './types';
+import {
+  AnalyzeResponse,
+  FindingFeedback,
+  FindingFeedbackRequest,
+  Language,
+  ProjectAnalysisRecord,
+  ProjectAnalysisRequest,
+  ProjectAnalysisResponse,
+  Snippet,
+  SnippetComparison,
+  SnippetSummary,
+} from './types';
 import config from './config';
 
 const DB_PATH = config.dbPath || path.join(__dirname, '..', 'data', 'snippets.db');
@@ -15,6 +26,23 @@ type SnippetRow = {
   language: string;
   results: string;
   created_at: string;
+};
+
+type ProjectAnalysisRow = {
+  id: string;
+  request: string;
+  results: string;
+  created_at: string;
+};
+
+type FindingFeedbackRow = {
+  id: string;
+  analysis_id: string;
+  finding_id: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 function parseResults(results: string): AnalyzeResponse {
@@ -52,6 +80,29 @@ function createSnippet(row: SnippetRow): Snippet {
     language: row.language as Language,
     results: parseResults(row.results),
     created_at: row.created_at,
+  };
+}
+
+function createProjectAnalysis(row: ProjectAnalysisRow): ProjectAnalysisRecord {
+  const results = JSON.parse(row.results) as ProjectAnalysisResponse;
+  const request = JSON.parse(row.request) as ProjectAnalysisRequest;
+
+  return {
+    ...results,
+    request,
+    created_at: row.created_at,
+  };
+}
+
+function createFindingFeedback(row: FindingFeedbackRow): FindingFeedback {
+  return {
+    id: row.id,
+    analysisId: row.analysis_id,
+    findingId: row.finding_id,
+    status: row.status as FindingFeedback['status'],
+    note: row.note || undefined,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
@@ -96,6 +147,36 @@ export async function initDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_snippets_created_at ON snippets(created_at);
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS project_analyses (
+      id TEXT PRIMARY KEY,
+      request JSON NOT NULL,
+      results JSON NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_project_analyses_created_at ON project_analyses(created_at);
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS finding_feedback (
+      id TEXT PRIMARY KEY,
+      analysis_id TEXT NOT NULL,
+      finding_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(analysis_id, finding_id)
+    );
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS idx_finding_feedback_analysis_id ON finding_feedback(analysis_id);
+  `);
+
   saveToFile();
   dbInitialized = true;
   console.log('Database initialized at', DB_PATH);
@@ -122,6 +203,126 @@ export function saveSnippet(
     JSON.stringify(results),
   ]);
   saveToFile();
+}
+
+export function saveProjectAnalysis(
+  id: string,
+  request: ProjectAnalysisRequest,
+  results: ProjectAnalysisResponse
+): void {
+  const database = getDb();
+  database.run(
+    `INSERT INTO project_analyses (id, request, results) VALUES (?, ?, ?)`,
+    [id, JSON.stringify(request), JSON.stringify(results)]
+  );
+  saveToFile();
+}
+
+export function getProjectAnalysis(id: string): ProjectAnalysisRecord | null {
+  const database = getDb();
+  const stmt = database.prepare(`
+    SELECT id, request, results, created_at
+    FROM project_analyses
+    WHERE id = ?
+  `);
+  stmt.bind([id]);
+
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as ProjectAnalysisRow;
+    stmt.free();
+    return createProjectAnalysis(row);
+  }
+
+  stmt.free();
+  return null;
+}
+
+export function saveFindingFeedback(
+  id: string,
+  payload: FindingFeedbackRequest
+): FindingFeedback {
+  const database = getDb();
+  const existing = getFindingFeedback(payload.analysisId, payload.findingId);
+
+  if (existing) {
+    database.run(
+      `
+        UPDATE finding_feedback
+        SET status = ?, note = ?, updated_at = datetime('now')
+        WHERE analysis_id = ? AND finding_id = ?
+      `,
+      [payload.status, payload.note || null, payload.analysisId, payload.findingId]
+    );
+
+    saveToFile();
+    return {
+      ...existing,
+      status: payload.status,
+      note: payload.note,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  database.run(
+    `
+      INSERT INTO finding_feedback (id, analysis_id, finding_id, status, note)
+      VALUES (?, ?, ?, ?, ?)
+    `,
+    [id, payload.analysisId, payload.findingId, payload.status, payload.note || null]
+  );
+  saveToFile();
+
+  return {
+    id,
+    analysisId: payload.analysisId,
+    findingId: payload.findingId,
+    status: payload.status,
+    note: payload.note,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export function getFindingFeedback(
+  analysisId: string,
+  findingId: string
+): FindingFeedback | null {
+  const database = getDb();
+  const stmt = database.prepare(`
+    SELECT id, analysis_id, finding_id, status, note, created_at, updated_at
+    FROM finding_feedback
+    WHERE analysis_id = ? AND finding_id = ?
+  `);
+  stmt.bind([analysisId, findingId]);
+
+  if (stmt.step()) {
+    const row = stmt.getAsObject() as FindingFeedbackRow;
+    stmt.free();
+    return createFindingFeedback(row);
+  }
+
+  stmt.free();
+  return null;
+}
+
+export function getFeedbackForAnalysis(analysisId: string): FindingFeedback[] {
+  const database = getDb();
+  const stmt = database.prepare(`
+    SELECT id, analysis_id, finding_id, status, note, created_at, updated_at
+    FROM finding_feedback
+    WHERE analysis_id = ?
+    ORDER BY created_at DESC
+  `);
+  stmt.bind([analysisId]);
+
+  const feedback: FindingFeedback[] = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as FindingFeedbackRow;
+    feedback.push(createFindingFeedback(row));
+  }
+
+  stmt.free();
+  return feedback;
 }
 
 export function getSnippet(id: string): Snippet | null {

@@ -175,6 +175,18 @@ describe('ResultsPanel Component', () => {
       fireEvent.click(screen.getByRole('button', { name: /copy fix/i }));
       await waitFor(() => expect(writeText).toHaveBeenCalledWith('Replace x with y'));
     });
+
+    it('records inline feedback for a finding', async () => {
+      const onFeedback = jest.fn().mockResolvedValue(undefined);
+      const mistake = createMistake({ name: 'feedback_target', message: 'Feedback target' });
+
+      render(<ResultsPanel mistakes={[mistake]} score={8} onFeedback={onFeedback} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /good catch/i }));
+
+      await waitFor(() => expect(onFeedback).toHaveBeenCalledWith(mistake, 'good_catch'));
+      expect(screen.getByText(/Marked as good catch/i)).toBeInTheDocument();
+    });
   });
 
   describe('Severity Badges', () => {

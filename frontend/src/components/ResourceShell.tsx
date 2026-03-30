@@ -13,6 +13,7 @@ interface ResourceShellProps {
 
 const navLinks = [
   { href: '/', label: 'Analyzer' },
+  { href: '/project', label: 'Project' },
   { href: '/history', label: 'History' },
   { href: '/compare', label: 'Compare' },
   { href: '/benchmark', label: 'Benchmark' },
