@@ -152,6 +152,93 @@ export interface RecentSnippetsResponse {
   total: number;
 }
 
+export interface ProjectFeedbackSummary {
+  total: number;
+  goodCatch: number;
+  falsePositive: number;
+  pending: number;
+}
+
+export interface ProjectAnalysisRecord extends ProjectAnalysisResponse {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  filesInput: ProjectFileInput[];
+  feedbackByFindingId: Record<string, FindingFeedbackKind>;
+  feedbackSummary: ProjectFeedbackSummary;
+}
+
+export interface ProjectAnalysisHistoryEntry {
+  id: string;
+  analysisId: string;
+  title: string;
+  profile: AnalysisProfile;
+  source: 'backend' | 'local';
+  score: number;
+  averageFileScore: number;
+  fileCount: number;
+  filesWithFindings: number;
+  findingCount: number;
+  parseErrorCount: number;
+  topSeverity: Severity | 'none';
+  feedbackSummary: ProjectFeedbackSummary;
+  createdAt: string;
+  updatedAt: string;
+  filePaths: string[];
+  topFindings: string[];
+}
+
+export interface ProjectAnalysisHistoryResponse {
+  analyses: ProjectAnalysisHistoryEntry[];
+  total: number;
+  source: 'backend' | 'local';
+}
+
+export interface ProjectComparisonSummary {
+  scoreDelta: number;
+  findingDelta: number;
+  fileDelta: number;
+  parseErrorDelta: number;
+  persistedFindings: string[];
+  newFindings: string[];
+  resolvedFindings: string[];
+}
+
+export interface ProjectComparisonResponse {
+  baseline: ProjectAnalysisHistoryEntry;
+  candidate: ProjectAnalysisHistoryEntry;
+  summary: ProjectComparisonSummary;
+  source: 'backend' | 'local';
+}
+
+export interface ProjectFeedbackRecord {
+  id: string;
+  analysisId: string;
+  findingId: string;
+  status: FindingFeedbackKind;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectFeedbackSummaryDetail {
+  analysisId: string;
+  totalFindings: number;
+  reviewedFindings: number;
+  unreviewedFindings: number;
+  goodCatchCount: number;
+  falsePositiveCount: number;
+  latestFeedback: ProjectFeedbackRecord | null;
+  feedback: ProjectFeedbackRecord[];
+}
+
+export interface ProjectFeedbackSummaryResponse {
+  analysisId: string;
+  summary: ProjectFeedbackSummaryDetail;
+  source: 'backend' | 'local';
+}
+
 export interface SnippetComparisonSummary {
   scoreDelta: number;
   mistakeDelta: number;
@@ -168,6 +255,39 @@ export interface SnippetComparisonResponse {
 
 type ProjectAnalysisPayload = Omit<ProjectAnalysisResponse, 'source'>;
 
+type ProjectAnalysisRecordPayload = ProjectAnalysisPayload & {
+  request: {
+    profile: AnalysisProfile;
+    files: Array<{
+      path: string;
+      language: Language;
+      code: string;
+    }>;
+  };
+  created_at: string;
+};
+
+type ProjectAnalysisSummaryCardPayload = {
+  id: string;
+  profile: AnalysisProfile;
+  score: number;
+  averageFileScore: number;
+  fileCount: number;
+  filesWithFindings: number;
+  parseErrorCount: number;
+  findingCount: number;
+  created_at: string;
+  topSeverity: Severity | 'none';
+  topFiles: string[];
+  topFindings: string[];
+};
+
+type ProjectComparisonPayload = {
+  baseline: ProjectAnalysisSummaryCardPayload;
+  candidate: ProjectAnalysisSummaryCardPayload;
+  summary: ProjectComparisonSummary;
+};
+
 type FindingFeedbackPayload = {
   id: string;
   analysisId: string;
@@ -177,6 +297,22 @@ type FindingFeedbackPayload = {
   created_at: string;
   updated_at: string;
 };
+
+type ProjectFeedbackSummaryPayload = {
+  analysisId: string;
+  summary: {
+    analysisId: string;
+    totalFindings: number;
+    reviewedFindings: number;
+    unreviewedFindings: number;
+    goodCatchCount: number;
+    falsePositiveCount: number;
+    latestFeedback: FindingFeedbackPayload | null;
+    feedback: FindingFeedbackPayload[];
+  };
+};
+
+const PROJECT_ANALYSIS_STORAGE_KEY = 'rookie-mistakes.project-analyses';
 
 export const ANALYSIS_PROFILES: Array<{
   value: AnalysisProfile;
@@ -324,6 +460,344 @@ function summarizeProjectFiles(files: ProjectFileAnalysis[], profile: AnalysisPr
   };
 }
 
+export function summarizeProjectFeedback(
+  feedbackByFindingId: Record<string, FindingFeedbackKind>,
+  findingCount: number
+): ProjectFeedbackSummary {
+  const summary: ProjectFeedbackSummary = {
+    total: 0,
+    goodCatch: 0,
+    falsePositive: 0,
+    pending: Math.max(0, findingCount),
+  };
+
+  Object.values(feedbackByFindingId).forEach((verdict) => {
+    summary.total += 1;
+    if (verdict === 'good_catch') {
+      summary.goodCatch += 1;
+    } else if (verdict === 'false_positive') {
+      summary.falsePositive += 1;
+    }
+  });
+
+  summary.pending = Math.max(0, findingCount - summary.total);
+
+  return summary;
+}
+
+function createProjectAnalysisTitle(files: ProjectFileInput[], profile: AnalysisProfile) {
+  const primaryFile = files[0]?.path || 'project';
+  const extraCount = Math.max(0, files.length - 1);
+  const label = extraCount > 0 ? `${primaryFile} + ${extraCount} more` : primaryFile;
+  return `${label} - ${profile}`;
+}
+
+function createProjectAnalysisRecord(
+  response: ProjectAnalysisResponse,
+  filesInput: ProjectFileInput[],
+  overrides: Partial<Pick<ProjectAnalysisRecord, 'id' | 'createdAt' | 'updatedAt' | 'title' | 'feedbackByFindingId'>> = {}
+): ProjectAnalysisRecord {
+  const feedbackByFindingId = overrides.feedbackByFindingId ?? {};
+  const createdAt = overrides.createdAt ?? new Date().toISOString();
+  const updatedAt = overrides.updatedAt ?? createdAt;
+
+  return {
+    ...response,
+    id: overrides.id ?? response.analysisId,
+    createdAt,
+    updatedAt,
+    title: overrides.title ?? createProjectAnalysisTitle(filesInput, response.profile),
+    filesInput,
+    feedbackByFindingId,
+    feedbackSummary: summarizeProjectFeedback(feedbackByFindingId, response.findings.length),
+  };
+}
+
+function getProjectTopSeverity(severityCounts: ProjectAnalysisSummary['severityCounts']): Severity | 'none' {
+  if (severityCounts.error > 0) {
+    return 'error';
+  }
+
+  if (severityCounts.warning > 0) {
+    return 'warning';
+  }
+
+  if (severityCounts.info > 0) {
+    return 'info';
+  }
+
+  return 'none';
+}
+
+function getProjectTopFindings(findings: ProjectFinding[]) {
+  return Array.from(new Set(findings.map((finding) => `${finding.filePath}: ${finding.name}`))).slice(0, 3);
+}
+
+function toProjectAnalysisHistoryEntry(record: ProjectAnalysisRecord): ProjectAnalysisHistoryEntry {
+  return {
+    id: record.analysisId,
+    analysisId: record.analysisId,
+    title: record.title,
+    profile: record.profile,
+    source: record.source,
+    score: record.summary.score,
+    averageFileScore: record.summary.averageFileScore,
+    fileCount: record.summary.fileCount,
+    filesWithFindings: record.summary.filesWithFindings,
+    findingCount: record.summary.findingCount,
+    parseErrorCount: record.summary.parseErrorCount,
+    topSeverity: getProjectTopSeverity(record.summary.severityCounts),
+    feedbackSummary: record.feedbackSummary,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    filePaths: record.filesInput.map((file) => file.path),
+    topFindings: getProjectTopFindings(record.findings),
+  };
+}
+
+function createProjectHistoryEntryFromCard(
+  payload: ProjectAnalysisSummaryCardPayload
+): ProjectAnalysisHistoryEntry {
+  const filePaths = payload.topFiles;
+  const primaryPath = filePaths[0] ?? 'project';
+  const extraFiles = Math.max(0, payload.fileCount - 1);
+  const label = extraFiles > 0 ? `${primaryPath} + ${extraFiles} more` : primaryPath;
+
+  return {
+    id: payload.id,
+    analysisId: payload.id,
+    title: `${label} - ${payload.profile}`,
+    profile: payload.profile,
+    source: 'backend',
+    score: payload.score,
+    averageFileScore: payload.averageFileScore,
+    fileCount: payload.fileCount,
+    filesWithFindings: payload.filesWithFindings,
+    findingCount: payload.findingCount,
+    parseErrorCount: payload.parseErrorCount,
+    topSeverity: payload.topSeverity,
+    feedbackSummary: {
+      total: 0,
+      goodCatch: 0,
+      falsePositive: 0,
+      pending: payload.findingCount,
+    },
+    createdAt: payload.created_at,
+    updatedAt: payload.created_at,
+    filePaths,
+    topFindings: payload.topFindings,
+  };
+}
+
+function normalizeProjectFeedbackRecord(payload: FindingFeedbackPayload): ProjectFeedbackRecord {
+  return {
+    id: payload.id,
+    analysisId: payload.analysisId,
+    findingId: payload.findingId,
+    status: payload.status,
+    note: payload.note,
+    createdAt: payload.created_at,
+    updatedAt: payload.updated_at,
+  };
+}
+
+function normalizeStoredProjectAnalysisRecord(
+  value: Partial<ProjectAnalysisRecord> & {
+    request?: {
+      files?: Array<ProjectFileInput & { id?: string }>;
+    };
+    created_at?: string;
+  }
+): ProjectAnalysisRecord | null {
+  const analysisId =
+    typeof value.analysisId === 'string'
+      ? value.analysisId
+      : typeof value.id === 'string'
+        ? value.id
+        : null;
+
+  if (!analysisId || !value.summary || !Array.isArray(value.files) || !Array.isArray(value.findings)) {
+    return null;
+  }
+
+  const filesInput =
+    Array.isArray(value.filesInput) && value.filesInput.length > 0
+      ? value.filesInput
+      : Array.isArray(value.request?.files) && value.request.files.length > 0
+        ? value.request.files.map((file, index) => ({
+            id: file.id ?? `${analysisId}-file-${index + 1}`,
+            path: file.path,
+            language: file.language,
+            code: file.code,
+          }))
+        : value.files.map((file, index) => ({
+            id: `${analysisId}-file-${index + 1}`,
+            path: file.path,
+            language: file.language,
+            code: '',
+          }));
+
+  const createdAt = value.createdAt ?? value.created_at ?? new Date().toISOString();
+  const updatedAt = value.updatedAt ?? createdAt;
+  const feedbackByFindingId = value.feedbackByFindingId ?? {};
+  const profile = value.profile ?? 'balanced';
+
+  return {
+    ...(value as ProjectAnalysisRecord),
+    id: analysisId,
+    analysisId,
+    profile,
+    source: value.source ?? (analysisId.startsWith('local-') ? 'local' : 'backend'),
+    title: value.title ?? createProjectAnalysisTitle(filesInput, profile),
+    createdAt,
+    updatedAt,
+    filesInput,
+    feedbackByFindingId,
+    feedbackSummary:
+      value.feedbackSummary ?? summarizeProjectFeedback(feedbackByFindingId, value.findings.length),
+  };
+}
+
+function readProjectAnalysisRecords(): ProjectAnalysisRecord[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(PROJECT_ANALYSIS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as Array<Partial<ProjectAnalysisRecord>>;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((record) => normalizeStoredProjectAnalysisRecord(record))
+      .filter((record): record is ProjectAnalysisRecord => Boolean(record))
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  } catch {
+    return [];
+  }
+}
+
+function writeProjectAnalysisRecords(records: ProjectAnalysisRecord[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(PROJECT_ANALYSIS_STORAGE_KEY, JSON.stringify(records));
+}
+
+function upsertProjectAnalysisRecord(record: ProjectAnalysisRecord) {
+  const records = readProjectAnalysisRecords();
+  const nextRecords = [
+    record,
+    ...records.filter(
+      (entry) => entry.id !== record.id && entry.analysisId !== record.analysisId
+    ),
+  ];
+
+  writeProjectAnalysisRecords(nextRecords);
+}
+
+function findProjectAnalysisRecord(
+  records: ProjectAnalysisRecord[],
+  id: string
+): ProjectAnalysisRecord | null {
+  return records.find((record) => record.id === id || record.analysisId === id) ?? null;
+}
+
+function normalizeProjectAnalysisRecordPayload(
+  payload: ProjectAnalysisRecordPayload,
+  existingRecord?: ProjectAnalysisRecord | null
+): ProjectAnalysisRecord {
+  const filesInput = payload.request.files.map((file, index) => ({
+    id: existingRecord?.filesInput[index]?.id ?? `${payload.analysisId}-file-${index + 1}`,
+    path: file.path,
+    language: file.language,
+    code: file.code,
+  }));
+
+  return createProjectAnalysisRecord(
+    normalizeProjectAnalysis(payload),
+    filesInput,
+    {
+      id: payload.analysisId,
+      createdAt: payload.created_at,
+      updatedAt: existingRecord?.updatedAt ?? payload.created_at,
+      title: existingRecord?.title ?? createProjectAnalysisTitle(filesInput, payload.profile),
+      feedbackByFindingId: existingRecord?.feedbackByFindingId ?? {},
+    }
+  );
+}
+
+function mergeProjectAnalysisHistoryEntries(
+  preferredEntries: ProjectAnalysisHistoryEntry[],
+  fallbackEntries: ProjectAnalysisHistoryEntry[],
+  limit: number
+) {
+  const merged = new Map<string, ProjectAnalysisHistoryEntry>();
+
+  for (const entry of [...preferredEntries, ...fallbackEntries]) {
+    const key = entry.analysisId || entry.id;
+    if (!merged.has(key)) {
+      merged.set(key, entry);
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, Math.max(0, limit));
+}
+
+function getProjectFindingSignature(finding: ProjectFinding) {
+  return `${finding.filePath}::${finding.name}::${finding.severity}::${finding.scope}::${finding.line}::${finding.column}`;
+}
+
+function compareLocalProjectAnalyses(
+  baseId: string,
+  targetId: string
+): ProjectComparisonResponse | null {
+  const records = readProjectAnalysisRecords();
+  const baseline = findProjectAnalysisRecord(records, baseId);
+  const candidate = findProjectAnalysisRecord(records, targetId);
+
+  if (!baseline || !candidate) {
+    return null;
+  }
+
+  const baselineFindings = new Map(
+    baseline.findings.map((finding) => [getProjectFindingSignature(finding), `${finding.filePath}: ${finding.name}`])
+  );
+  const candidateFindings = new Map(
+    candidate.findings.map((finding) => [getProjectFindingSignature(finding), `${finding.filePath}: ${finding.name}`])
+  );
+
+  return {
+    baseline: toProjectAnalysisHistoryEntry(baseline),
+    candidate: toProjectAnalysisHistoryEntry(candidate),
+    summary: {
+      scoreDelta: Number((candidate.summary.score - baseline.summary.score).toFixed(1)),
+      findingDelta: candidate.summary.findingCount - baseline.summary.findingCount,
+      fileDelta: candidate.summary.fileCount - baseline.summary.fileCount,
+      parseErrorDelta: candidate.summary.parseErrorCount - baseline.summary.parseErrorCount,
+      persistedFindings: Array.from(baselineFindings.entries())
+        .filter(([signature]) => candidateFindings.has(signature))
+        .map(([, label]) => label),
+      newFindings: Array.from(candidateFindings.entries())
+        .filter(([signature]) => !baselineFindings.has(signature))
+        .map(([, label]) => label),
+      resolvedFindings: Array.from(baselineFindings.entries())
+        .filter(([signature]) => !candidateFindings.has(signature))
+        .map(([, label]) => label),
+    },
+    source: 'local',
+  };
+}
+
 function normalizeProjectAnalysis(payload: ProjectAnalysisPayload): ProjectAnalysisResponse {
   return {
     ...payload,
@@ -389,6 +863,209 @@ async function analyzeProjectLocally(request: ProjectAnalysisRequest): Promise<P
     files,
     findings: files.flatMap((file) => file.findings),
   };
+}
+
+export function persistProjectAnalysisRecord(
+  response: ProjectAnalysisResponse,
+  filesInput: ProjectFileInput[],
+  overrides: Partial<Pick<ProjectAnalysisRecord, 'id' | 'createdAt' | 'updatedAt' | 'title' | 'feedbackByFindingId'>> = {}
+): ProjectAnalysisRecord {
+  const record = createProjectAnalysisRecord(response, filesInput, overrides);
+  upsertProjectAnalysisRecord(record);
+  return record;
+}
+
+export function updateProjectAnalysisFeedbackRecord(
+  recordId: string,
+  findingId: string,
+  verdict: FindingFeedbackKind
+): ProjectAnalysisRecord | null {
+  const records = readProjectAnalysisRecords();
+  const index = records.findIndex(
+    (record) => record.id === recordId || record.analysisId === recordId
+  );
+
+  if (index === -1) {
+    return null;
+  }
+
+  const current = records[index];
+  const feedbackByFindingId = {
+    ...current.feedbackByFindingId,
+    [findingId]: verdict,
+  };
+
+  const updatedRecord: ProjectAnalysisRecord = {
+    ...current,
+    updatedAt: new Date().toISOString(),
+    feedbackByFindingId,
+    feedbackSummary: summarizeProjectFeedback(feedbackByFindingId, current.findings.length),
+  };
+
+  records[index] = updatedRecord;
+  writeProjectAnalysisRecords(records);
+
+  return updatedRecord;
+}
+
+export function getProjectAnalysisHistory(limit: number = 12): ProjectAnalysisHistoryResponse {
+  const records = readProjectAnalysisRecords();
+  const analyses = records.slice(0, Math.max(0, limit)).map(toProjectAnalysisHistoryEntry);
+
+  return {
+    analyses,
+    total: records.length,
+    source: 'local',
+  };
+}
+
+export async function getProjectAnalysisRecord(id: string): Promise<ProjectAnalysisRecord | null> {
+  const localRecords = readProjectAnalysisRecords();
+  const existingRecord = findProjectAnalysisRecord(localRecords, id);
+
+  try {
+    const payload = await fetchJson<ProjectAnalysisRecordPayload>(
+      `${API_BASE}/api/v1/projects/${id}`,
+      undefined,
+      'Failed to fetch project analysis'
+    );
+
+    const record = normalizeProjectAnalysisRecordPayload(payload, existingRecord);
+    upsertProjectAnalysisRecord(record);
+    return record;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return existingRecord;
+    }
+
+    throw error;
+  }
+}
+
+export async function getRecentProjectAnalyses(limit: number = 10): Promise<ProjectAnalysisHistoryResponse> {
+  const localHistory = getProjectAnalysisHistory(limit);
+
+  try {
+    const payload = await fetchJson<{ analyses: ProjectAnalysisSummaryCardPayload[]; total: number }>(
+      `${API_BASE}/api/v1/projects/recent?limit=${limit}`,
+      undefined,
+      'Failed to fetch recent project analyses'
+    );
+
+    const remoteAnalyses = payload.analyses.map(createProjectHistoryEntryFromCard);
+    const analyses = mergeProjectAnalysisHistoryEntries(localHistory.analyses, remoteAnalyses, limit);
+
+    return {
+      analyses,
+      total: Math.max(payload.total, analyses.length),
+      source: 'backend',
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return localHistory;
+    }
+
+    throw error;
+  }
+}
+
+export async function compareProjectAnalyses(
+  baseId: string,
+  targetId: string
+): Promise<ProjectComparisonResponse> {
+  try {
+    const params = new URLSearchParams({ baseId, targetId });
+    const payload = await fetchJson<ProjectComparisonPayload>(
+      `${API_BASE}/api/v1/projects/compare?${params.toString()}`,
+      undefined,
+      'Failed to compare project analyses'
+    );
+
+    return {
+      baseline: createProjectHistoryEntryFromCard(payload.baseline),
+      candidate: createProjectHistoryEntryFromCard(payload.candidate),
+      summary: payload.summary,
+      source: 'backend',
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      const comparison = compareLocalProjectAnalyses(baseId, targetId);
+      if (comparison) {
+        return comparison;
+      }
+    }
+
+    throw error;
+  }
+}
+
+export async function getProjectFeedbackSummary(
+  analysisId: string
+): Promise<ProjectFeedbackSummaryResponse> {
+  const localRecord = findProjectAnalysisRecord(readProjectAnalysisRecords(), analysisId);
+
+  try {
+    const payload = await fetchJson<ProjectFeedbackSummaryPayload>(
+      `${API_BASE}/api/v1/feedback/summary/${analysisId}`,
+      undefined,
+      'Failed to fetch project feedback summary'
+    );
+
+    return {
+      analysisId: payload.analysisId,
+      summary: {
+        analysisId: payload.summary.analysisId,
+        totalFindings: payload.summary.totalFindings,
+        reviewedFindings: payload.summary.reviewedFindings,
+        unreviewedFindings: payload.summary.unreviewedFindings,
+        goodCatchCount: payload.summary.goodCatchCount,
+        falsePositiveCount: payload.summary.falsePositiveCount,
+        latestFeedback: payload.summary.latestFeedback
+          ? normalizeProjectFeedbackRecord(payload.summary.latestFeedback)
+          : null,
+        feedback: payload.summary.feedback.map(normalizeProjectFeedbackRecord),
+      },
+      source: 'backend',
+    };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404 && localRecord) {
+      const feedback = Object.entries(localRecord.feedbackByFindingId).map(
+        ([findingId, status], index): ProjectFeedbackRecord => ({
+          id: `local-feedback-${index + 1}`,
+          analysisId: localRecord.analysisId,
+          findingId,
+          status,
+          createdAt: localRecord.updatedAt,
+          updatedAt: localRecord.updatedAt,
+        })
+      );
+
+      return {
+        analysisId: localRecord.analysisId,
+        summary: {
+          analysisId: localRecord.analysisId,
+          totalFindings: localRecord.findings.length,
+          reviewedFindings: feedback.length,
+          unreviewedFindings: Math.max(0, localRecord.findings.length - feedback.length),
+          goodCatchCount: feedback.filter((entry) => entry.status === 'good_catch').length,
+          falsePositiveCount: feedback.filter((entry) => entry.status === 'false_positive').length,
+          latestFeedback: feedback[0] ?? null,
+          feedback,
+        },
+        source: 'local',
+      };
+    }
+
+    throw error;
+  }
+}
+
+export function buildProjectAnalysisHref(analysisId: string) {
+  return `/project/${analysisId}`;
+}
+
+export function buildProjectWorkspaceHref(analysisId: string) {
+  return `/project?analysisId=${encodeURIComponent(analysisId)}`;
 }
 
 export async function analyzeCode(code: string, language: Language): Promise<AnalyzeResponse> {

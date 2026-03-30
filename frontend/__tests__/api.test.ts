@@ -1,6 +1,10 @@
 import {
   analyzeCode,
   analyzeProject,
+  compareProjectAnalyses,
+  getProjectAnalysisRecord,
+  getProjectFeedbackSummary,
+  getRecentProjectAnalyses,
   getSnippet,
   saveSnippet,
   submitFindingFeedback,
@@ -306,6 +310,237 @@ describe('API Client', () => {
       expect(result.summary.fileCount).toBe(2);
       expect(result.summary.findingCount).toBe(1);
       expect(result.summary.score).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('project analysis history and result APIs', () => {
+    it('maps recent project analyses into UI-friendly history entries', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            analyses: [
+              {
+                id: 'analysis-1',
+                profile: 'balanced',
+                score: 8.4,
+                averageFileScore: 8.8,
+                fileCount: 2,
+                filesWithFindings: 1,
+                parseErrorCount: 0,
+                findingCount: 1,
+                created_at: '2026-03-30T10:00:00.000Z',
+                topSeverity: 'warning',
+                topFiles: ['src/app.ts', 'src/service.ts'],
+                topFindings: ['src/service.ts: console_log_left'],
+              },
+            ],
+            total: 1,
+          }),
+      });
+
+      const result = await getRecentProjectAnalyses(5);
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/recent?limit=5');
+      expect(result.analyses[0]).toEqual(
+        expect.objectContaining({
+          analysisId: 'analysis-1',
+          title: 'src/app.ts + 1 more - balanced',
+          filePaths: ['src/app.ts', 'src/service.ts'],
+          topSeverity: 'warning',
+        })
+      );
+    });
+
+    it('normalizes a saved backend project analysis record', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            analysisId: 'analysis-2',
+            profile: 'strict',
+            summary: {
+              profile: 'strict',
+              score: 7.6,
+              averageFileScore: 8.1,
+              fileCount: 1,
+              filesWithFindings: 1,
+              parseErrorCount: 0,
+              findingCount: 1,
+              severityCounts: {
+                error: 0,
+                warning: 1,
+                info: 0,
+              },
+            },
+            files: [
+              {
+                path: 'src/app.ts',
+                language: 'typescript',
+                lineCount: 12,
+                score: 7.6,
+                findingCount: 1,
+                findings: [
+                  {
+                    id: 1,
+                    findingId: 'finding-1',
+                    filePath: 'src/app.ts',
+                    language: 'typescript',
+                    name: 'awaited_fetch',
+                    line: 3,
+                    column: 1,
+                    severity: 'warning',
+                    certainty: 'possible',
+                    confidence: 0.8,
+                    scope: 'function',
+                    message: 'Await the fetch promise.',
+                    ast_facts: {},
+                    explanation: 'Promises should be awaited before use.',
+                    fix: 'Add await before the call.',
+                  },
+                ],
+                status: 'ok',
+              },
+            ],
+            findings: [
+              {
+                id: 1,
+                findingId: 'finding-1',
+                filePath: 'src/app.ts',
+                language: 'typescript',
+                name: 'awaited_fetch',
+                line: 3,
+                column: 1,
+                severity: 'warning',
+                certainty: 'possible',
+                confidence: 0.8,
+                scope: 'function',
+                message: 'Await the fetch promise.',
+                ast_facts: {},
+                explanation: 'Promises should be awaited before use.',
+                fix: 'Add await before the call.',
+              },
+            ],
+            request: {
+              profile: 'strict',
+              files: [
+                {
+                  path: 'src/app.ts',
+                  language: 'typescript',
+                  code: 'const response = fetch("/api");',
+                },
+              ],
+            },
+            created_at: '2026-03-30T11:00:00.000Z',
+          }),
+      });
+
+      const result = await getProjectAnalysisRecord('analysis-2');
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects/analysis-2');
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'analysis-2',
+          analysisId: 'analysis-2',
+          title: 'src/app.ts - strict',
+        })
+      );
+      expect(result?.filesInput[0]).toEqual(
+        expect.objectContaining({
+          path: 'src/app.ts',
+          code: 'const response = fetch("/api");',
+        })
+      );
+    });
+
+    it('maps project comparison and feedback summary responses', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              baseline: {
+                id: 'analysis-1',
+                profile: 'balanced',
+                score: 6.8,
+                averageFileScore: 7.4,
+                fileCount: 1,
+                filesWithFindings: 1,
+                parseErrorCount: 0,
+                findingCount: 2,
+                created_at: '2026-03-30T10:00:00.000Z',
+                topSeverity: 'warning',
+                topFiles: ['src/app.ts'],
+                topFindings: ['src/app.ts: awaited_fetch'],
+              },
+              candidate: {
+                id: 'analysis-2',
+                profile: 'balanced',
+                score: 8.9,
+                averageFileScore: 8.9,
+                fileCount: 1,
+                filesWithFindings: 0,
+                parseErrorCount: 0,
+                findingCount: 0,
+                created_at: '2026-03-30T10:05:00.000Z',
+                topSeverity: 'none',
+                topFiles: ['src/app.ts'],
+                topFindings: [],
+              },
+              summary: {
+                scoreDelta: 2.1,
+                findingDelta: -2,
+                fileDelta: 0,
+                parseErrorDelta: 0,
+                persistedFindings: [],
+                newFindings: [],
+                resolvedFindings: ['src/app.ts: awaited_fetch'],
+              },
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              analysisId: 'analysis-2',
+              summary: {
+                analysisId: 'analysis-2',
+                totalFindings: 2,
+                reviewedFindings: 1,
+                unreviewedFindings: 1,
+                goodCatchCount: 1,
+                falsePositiveCount: 0,
+                latestFeedback: {
+                  id: 'feedback-1',
+                  analysisId: 'analysis-2',
+                  findingId: 'finding-1',
+                  status: 'good_catch',
+                  note: 'Correct callout',
+                  created_at: '2026-03-30T10:06:00.000Z',
+                  updated_at: '2026-03-30T10:06:00.000Z',
+                },
+                feedback: [
+                  {
+                    id: 'feedback-1',
+                    analysisId: 'analysis-2',
+                    findingId: 'finding-1',
+                    status: 'good_catch',
+                    note: 'Correct callout',
+                    created_at: '2026-03-30T10:06:00.000Z',
+                    updated_at: '2026-03-30T10:06:00.000Z',
+                  },
+                ],
+              },
+            }),
+        });
+
+      const comparison = await compareProjectAnalyses('analysis-1', 'analysis-2');
+      const feedback = await getProjectFeedbackSummary('analysis-2');
+
+      expect(comparison.summary.scoreDelta).toBe(2.1);
+      expect(comparison.baseline.title).toBe('src/app.ts - balanced');
+      expect(feedback.summary.latestFeedback?.note).toBe('Correct callout');
+      expect(feedback.summary.goodCatchCount).toBe(1);
     });
   });
 

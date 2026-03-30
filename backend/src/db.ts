@@ -9,6 +9,11 @@ import {
   ProjectAnalysisRecord,
   ProjectAnalysisRequest,
   ProjectAnalysisResponse,
+  ProjectAnalysisSummaryCard,
+  ProjectComparison,
+  ProjectFeedbackSummaryResponse,
+  RecentProjectAnalysesResponse,
+  Severity,
   Snippet,
   SnippetComparison,
   SnippetSummary,
@@ -104,6 +109,101 @@ function createFindingFeedback(row: FindingFeedbackRow): FindingFeedback {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+function getProjectTopSeverity(severityCounts: ProjectAnalysisResponse['summary']['severityCounts']): Severity | 'none' {
+  if (severityCounts.error > 0) return 'error';
+  if (severityCounts.warning > 0) return 'warning';
+  if (severityCounts.info > 0) return 'info';
+  return 'none';
+}
+
+function createProjectAnalysisSummaryCard(analysis: ProjectAnalysisRecord): ProjectAnalysisSummaryCard {
+  const topSeverity = getProjectTopSeverity(analysis.summary.severityCounts);
+  const topFiles = [...analysis.files]
+    .sort((left, right) => {
+      if (left.status !== right.status) {
+        return left.status === 'parse_error' ? -1 : 1;
+      }
+
+      if (left.findingCount !== right.findingCount) {
+        return right.findingCount - left.findingCount;
+      }
+
+      if (left.score !== right.score) {
+        return left.score - right.score;
+      }
+
+      return left.path.localeCompare(right.path);
+    })
+    .map((file) => file.path)
+    .filter((path, index, all) => all.indexOf(path) === index)
+    .slice(0, 3);
+
+  const findingLabels = new Map<string, { count: number; severityWeight: number }>();
+  const severityWeight: Record<Severity, number> = {
+    error: 3,
+    warning: 2,
+    info: 1,
+  };
+
+  for (const finding of analysis.findings) {
+    const label = `${finding.filePath}: ${finding.name}`;
+    const current = findingLabels.get(label);
+    findingLabels.set(label, {
+      count: (current?.count ?? 0) + 1,
+      severityWeight: Math.max(current?.severityWeight ?? 0, severityWeight[finding.severity]),
+    });
+  }
+
+  const topFindings = [...findingLabels.entries()]
+    .sort((left, right) => {
+      const countDelta = right[1].count - left[1].count;
+      if (countDelta !== 0) return countDelta;
+
+      const severityDelta = right[1].severityWeight - left[1].severityWeight;
+      if (severityDelta !== 0) return severityDelta;
+
+      return left[0].localeCompare(right[0]);
+    })
+    .map(([label]) => label)
+    .slice(0, 3);
+
+  return {
+    id: analysis.analysisId,
+    profile: analysis.profile,
+    score: analysis.summary.score,
+    averageFileScore: analysis.summary.averageFileScore,
+    fileCount: analysis.summary.fileCount,
+    filesWithFindings: analysis.summary.filesWithFindings,
+    parseErrorCount: analysis.summary.parseErrorCount,
+    findingCount: analysis.summary.findingCount,
+    created_at: analysis.created_at,
+    topSeverity,
+    topFiles,
+    topFindings,
+  };
+}
+
+function getProjectFindingSignature(finding: ProjectAnalysisRecord['findings'][number]): string {
+  return `${finding.filePath}::${finding.name}::${finding.severity}::${finding.scope}::${finding.line}::${finding.column}`;
+}
+
+function getProjectFindingLabel(finding: ProjectAnalysisRecord['findings'][number]): string {
+  return `${finding.filePath}: ${finding.name}`;
+}
+
+function indexProjectFindings(findings: ProjectAnalysisRecord['findings']): Map<string, string> {
+  const indexed = new Map<string, string>();
+
+  for (const finding of findings) {
+    const signature = getProjectFindingSignature(finding);
+    if (!indexed.has(signature)) {
+      indexed.set(signature, getProjectFindingLabel(finding));
+    }
+  }
+
+  return indexed;
 }
 
 function getDb(): SqlJsDatabase {
@@ -237,6 +337,72 @@ export function getProjectAnalysis(id: string): ProjectAnalysisRecord | null {
   return null;
 }
 
+export function getRecentProjectAnalyses(limit: number = 10): RecentProjectAnalysesResponse {
+  const database = getDb();
+  const totalStmt = database.prepare(`SELECT COUNT(*) AS total FROM project_analyses`);
+  let total = 0;
+
+  if (totalStmt.step()) {
+    const row = totalStmt.getAsObject() as { total: number };
+    total = Number(row.total || 0);
+  }
+  totalStmt.free();
+
+  const stmt = database.prepare(`
+    SELECT id, request, results, created_at
+    FROM project_analyses
+    ORDER BY created_at DESC, rowid DESC
+    LIMIT ?
+  `);
+  stmt.bind([limit]);
+
+  const analyses: ProjectAnalysisSummaryCard[] = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as ProjectAnalysisRow;
+    analyses.push(createProjectAnalysisSummaryCard(createProjectAnalysis(row)));
+  }
+
+  stmt.free();
+
+  return { analyses, total };
+}
+
+export function compareProjectAnalyses(baseId: string, targetId: string): ProjectComparison | null {
+  const baseline = getProjectAnalysis(baseId);
+  const candidate = getProjectAnalysis(targetId);
+
+  if (!baseline || !candidate) {
+    return null;
+  }
+
+  const baselineFindings = indexProjectFindings(baseline.findings);
+  const candidateFindings = indexProjectFindings(candidate.findings);
+
+  const persistedFindings = [...baselineFindings.entries()]
+    .filter(([signature]) => candidateFindings.has(signature))
+    .map(([, label]) => label);
+  const newFindings = [...candidateFindings.entries()]
+    .filter(([signature]) => !baselineFindings.has(signature))
+    .map(([, label]) => label);
+  const resolvedFindings = [...baselineFindings.entries()]
+    .filter(([signature]) => !candidateFindings.has(signature))
+    .map(([, label]) => label);
+
+  return {
+    baseline: createProjectAnalysisSummaryCard(baseline),
+    candidate: createProjectAnalysisSummaryCard(candidate),
+    summary: {
+      scoreDelta: Number((candidate.summary.score - baseline.summary.score).toFixed(1)),
+      findingDelta: candidate.summary.findingCount - baseline.summary.findingCount,
+      fileDelta: candidate.summary.fileCount - baseline.summary.fileCount,
+      parseErrorDelta: candidate.summary.parseErrorCount - baseline.summary.parseErrorCount,
+      persistedFindings,
+      newFindings,
+      resolvedFindings,
+    },
+  };
+}
+
 export function saveFindingFeedback(
   id: string,
   payload: FindingFeedbackRequest
@@ -311,7 +477,7 @@ export function getFeedbackForAnalysis(analysisId: string): FindingFeedback[] {
     SELECT id, analysis_id, finding_id, status, note, created_at, updated_at
     FROM finding_feedback
     WHERE analysis_id = ?
-    ORDER BY created_at DESC
+    ORDER BY updated_at DESC, created_at DESC, rowid DESC
   `);
   stmt.bind([analysisId]);
 
@@ -323,6 +489,32 @@ export function getFeedbackForAnalysis(analysisId: string): FindingFeedback[] {
 
   stmt.free();
   return feedback;
+}
+
+export function getProjectFeedbackSummary(analysisId: string): ProjectFeedbackSummaryResponse | null {
+  const analysis = getProjectAnalysis(analysisId);
+  if (!analysis) {
+    return null;
+  }
+
+  const feedback = getFeedbackForAnalysis(analysisId);
+  const reviewedFindings = feedback.length;
+  const goodCatchCount = feedback.filter((entry) => entry.status === 'good_catch').length;
+  const falsePositiveCount = feedback.filter((entry) => entry.status === 'false_positive').length;
+
+  return {
+    analysisId,
+    summary: {
+      analysisId,
+      totalFindings: analysis.findings.length,
+      reviewedFindings,
+      unreviewedFindings: Math.max(0, analysis.findings.length - reviewedFindings),
+      goodCatchCount,
+      falsePositiveCount,
+      latestFeedback: feedback[0] || null,
+      feedback,
+    },
+  };
 }
 
 export function getSnippet(id: string): Snippet | null {

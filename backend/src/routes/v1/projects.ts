@@ -1,11 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
-import { getProjectAnalysis, saveProjectAnalysis } from '../../db';
+import {
+  compareProjectAnalyses,
+  getProjectAnalysis,
+  getRecentProjectAnalyses,
+  saveProjectAnalysis,
+} from '../../db';
 import {
   validateProjectAnalyzeRequest,
   validateProjectAnalysisParams,
+  validateProjectCompareQuery,
+  validateRecentProjectAnalysesQuery,
   ProjectAnalyzeRequest,
   ProjectAnalysisParams,
+  ProjectCompareQuery,
+  RecentProjectAnalysesQuery,
 } from '../../middleware/validation';
 import { asyncHandler, NotFoundError } from '../../middleware/errorHandler';
 import { analyzeLimiter } from '../../middleware/rateLimit';
@@ -47,6 +56,45 @@ router.post(
     });
 
     return res.status(201).json(analysis);
+  })
+);
+
+router.get(
+  '/recent',
+  validateRecentProjectAnalysesQuery,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { limit } = req.query as unknown as RecentProjectAnalysesQuery;
+    const requestId = req.requestId;
+
+    logger.info('Retrieving recent project analyses', {
+      requestId,
+      limit,
+    });
+
+    return res.json(getRecentProjectAnalyses(limit));
+  })
+);
+
+router.get(
+  '/compare',
+  validateProjectCompareQuery,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { baseId, targetId } = req.query as unknown as ProjectCompareQuery;
+    const requestId = req.requestId;
+
+    logger.info('Comparing project analyses', {
+      requestId,
+      baselineAnalysisId: baseId,
+      candidateAnalysisId: targetId,
+    });
+
+    const comparison = compareProjectAnalyses(baseId, targetId);
+
+    if (!comparison) {
+      throw new NotFoundError('Project analysis not found');
+    }
+
+    return res.json(comparison);
   })
 );
 

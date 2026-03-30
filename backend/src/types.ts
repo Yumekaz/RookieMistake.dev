@@ -110,6 +110,42 @@ export interface SnippetComparison {
   summary: SnippetComparisonSummary;
 }
 
+export interface ProjectAnalysisSummaryCard {
+  id: string;
+  profile: AnalysisProfile;
+  score: number;
+  averageFileScore: number;
+  fileCount: number;
+  filesWithFindings: number;
+  parseErrorCount: number;
+  findingCount: number;
+  created_at: string;
+  topSeverity: Severity | 'none';
+  topFiles: string[];
+  topFindings: string[];
+}
+
+export interface RecentProjectAnalysesResponse {
+  analyses: ProjectAnalysisSummaryCard[];
+  total: number;
+}
+
+export interface ProjectComparisonSummary {
+  scoreDelta: number;
+  findingDelta: number;
+  fileDelta: number;
+  parseErrorDelta: number;
+  persistedFindings: string[];
+  newFindings: string[];
+  resolvedFindings: string[];
+}
+
+export interface ProjectComparison {
+  baseline: ProjectAnalysisSummaryCard;
+  candidate: ProjectAnalysisSummaryCard;
+  summary: ProjectComparisonSummary;
+}
+
 export interface ProjectFinding extends Mistake {
   findingId: string;
   filePath: string;
@@ -168,6 +204,22 @@ export interface FindingFeedbackRequest {
   findingId: string;
   status: FindingFeedbackStatus;
   note?: string;
+}
+
+export interface ProjectFeedbackSummary {
+  analysisId: string;
+  totalFindings: number;
+  reviewedFindings: number;
+  unreviewedFindings: number;
+  goodCatchCount: number;
+  falsePositiveCount: number;
+  latestFeedback: FindingFeedback | null;
+  feedback: FindingFeedback[];
+}
+
+export interface ProjectFeedbackSummaryResponse {
+  analysisId: string;
+  summary: ProjectFeedbackSummary;
 }
 
 // Detector interface - all detectors must implement this

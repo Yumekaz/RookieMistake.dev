@@ -4,6 +4,9 @@ import {
   validateAnalyzeRequest,
   validateProjectAnalyzeRequest,
   validateProjectAnalysisParams,
+  validateRecentProjectAnalysesQuery,
+  validateProjectCompareQuery,
+  validateProjectFeedbackSummaryParams,
   validateFindingFeedbackRequest,
   validateSnippetParams,
   analyzeRequestSchema,
@@ -12,6 +15,9 @@ import {
   saveRequestSchema,
   snippetParamsSchema,
   projectAnalysisParamsSchema,
+  recentProjectAnalysesQuerySchema,
+  projectCompareQuerySchema,
+  projectFeedbackSummaryParamsSchema,
   recentSnippetsQuerySchema,
   compareQuerySchema,
 } from '../../src/middleware/validation';
@@ -234,6 +240,25 @@ describe('Validation Middleware', () => {
   });
 
   describe('query schemas', () => {
+    it('validates recent project analyses query', () => {
+      const result = recentProjectAnalysesQuerySchema.safeParse({ limit: '12' });
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.limit).toBe(12);
+    });
+
+    it('validates project compare query', () => {
+      const result = projectCompareQuerySchema.safeParse({
+        baseId: 'abc123',
+        targetId: 'xyz789',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('validates project feedback summary params', () => {
+      const result = projectFeedbackSummaryParamsSchema.safeParse({ analysisId: 'abc123' });
+      expect(result.success).toBe(true);
+    });
+
     it('validates recent snippets query', () => {
       const result = recentSnippetsQuerySchema.safeParse({ limit: '15' });
       expect(result.success).toBe(true);
@@ -308,6 +333,30 @@ describe('Validation Middleware', () => {
       mockReq.params = { id: 'valid123' };
 
       validateProjectAnalysisParams(mockReq as Request, mockRes as Response, mockNext);
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('validates recent project analyses query correctly', () => {
+      mockReq.query = { limit: '4' };
+
+      validateRecentProjectAnalysesQuery(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('validates project compare query correctly', () => {
+      mockReq.query = { baseId: 'base123', targetId: 'target123' };
+
+      validateProjectCompareQuery(mockReq as Request, mockRes as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('validates project feedback summary params correctly', () => {
+      mockReq.params = { analysisId: 'valid123' };
+
+      validateProjectFeedbackSummaryParams(mockReq as Request, mockRes as Response, mockNext);
+
       expect(mockNext).toHaveBeenCalled();
     });
 

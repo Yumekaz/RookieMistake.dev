@@ -133,6 +133,25 @@ export const projectAnalysisParamsSchema = z.object({
 
 export type ProjectAnalysisParams = z.infer<typeof projectAnalysisParamsSchema>;
 
+export const recentProjectAnalysesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+export type RecentProjectAnalysesQuery = z.infer<typeof recentProjectAnalysesQuerySchema>;
+
+export const projectCompareQuerySchema = z.object({
+  baseId: snippetIdSchema,
+  targetId: snippetIdSchema,
+});
+
+export type ProjectCompareQuery = z.infer<typeof projectCompareQuerySchema>;
+
+export const projectFeedbackSummaryParamsSchema = z.object({
+  analysisId: snippetIdSchema,
+});
+
+export type ProjectFeedbackSummaryParams = z.infer<typeof projectFeedbackSummaryParamsSchema>;
+
 export const recentSnippetsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
@@ -200,6 +219,9 @@ export const validateProjectAnalyzeRequest = validate(projectAnalyzeRequestSchem
 export const validateSaveRequest = validate(saveRequestSchema, 'body');
 export const validateSnippetParams = validate(snippetParamsSchema, 'params');
 export const validateProjectAnalysisParams = validate(projectAnalysisParamsSchema, 'params');
+export const validateRecentProjectAnalysesQuery = validate(recentProjectAnalysesQuerySchema, 'query');
+export const validateProjectCompareQuery = validate(projectCompareQuerySchema, 'query');
+export const validateProjectFeedbackSummaryParams = validate(projectFeedbackSummaryParamsSchema, 'params');
 export const validateFindingFeedbackRequest = validate(findingFeedbackSchema, 'body');
 export const validateRecentSnippetsQuery = validate(recentSnippetsQuerySchema, 'query');
 export const validateCompareQuery = validate(compareQuerySchema, 'query');
@@ -211,6 +233,9 @@ export default {
   validateSaveRequest,
   validateSnippetParams,
   validateProjectAnalysisParams,
+  validateRecentProjectAnalysesQuery,
+  validateProjectCompareQuery,
+  validateProjectFeedbackSummaryParams,
   validateFindingFeedbackRequest,
   validateRecentSnippetsQuery,
   validateCompareQuery,
@@ -220,6 +245,9 @@ export default {
     saveRequestSchema,
     snippetParamsSchema,
     projectAnalysisParamsSchema,
+    recentProjectAnalysesQuerySchema,
+    projectCompareQuerySchema,
+    projectFeedbackSummaryParamsSchema,
     snippetIdSchema,
     recentSnippetsQuerySchema,
     compareQuerySchema,
