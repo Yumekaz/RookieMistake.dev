@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 describe('Config validation', () => {
   const originalEnv = { ...process.env };
 

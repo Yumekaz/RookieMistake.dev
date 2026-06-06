@@ -19,7 +19,7 @@ function hasInterpolation(text: string): boolean {
 }
 
 function looksParameterized(text: string): boolean {
-  return /\?\s*[,\)]/.test(text) || /\$\d+/.test(text) || /:%s/.test(text) || /%\(\w+\)s/.test(text);
+  return /\?\s*[,)]/.test(text) || /\$\d+/.test(text) || /:%s/.test(text) || /%\(\w+\)s/.test(text);
 }
 
 const sqlStringInterpolationDetector: Detector = {

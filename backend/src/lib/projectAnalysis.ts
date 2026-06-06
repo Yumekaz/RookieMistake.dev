@@ -75,7 +75,10 @@ function scoreFile(findings: ProjectFinding[], lineCount: number, profile: Analy
 }
 
 function stripMistakeMetadata(finding: ProjectFinding): Mistake {
-  const { findingId, filePath, language, ...mistake } = finding;
+  const mistake = { ...finding };
+  delete (mistake as Partial<ProjectFinding>).findingId;
+  delete (mistake as Partial<ProjectFinding>).filePath;
+  delete (mistake as Partial<ProjectFinding>).language;
   return mistake;
 }
 
